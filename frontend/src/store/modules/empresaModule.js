@@ -1,8 +1,8 @@
 import api from '@/service/api'
-import { ESModulesEvaluator } from 'vite/module-runner'
 
 const state ={
     empresa:[],
+    empresaSelecionada:null,
     carregando:false,
     error:null
 }
@@ -10,6 +10,7 @@ const state ={
 const getters={
     empresa: (state) =>state.empresa,
     todasEmpresas:(state) => state.empresa,
+    empresaSelecionada:(state)=> state.empresaSelecionada,
     estaCarregando: (state) => state.carregando,
     error:(state) => state.error
 }
@@ -17,6 +18,13 @@ const getters={
 const mutations={
     SET_EMPRESA(state, empresaDaApi){
         state.empresa = empresaDaApi
+    },
+    SET_EMPRESA_SELECIONADA(state,empresa){
+        state.empresaSelecionada = empresa
+    },
+
+    LIMPAR_EMPRESA_SELECIONADA(state){
+        state.empresaSelecionada = null
     },
     SET_CARREGANDO(state,status){
         state.carregando=status
@@ -42,7 +50,7 @@ const mutations={
 const actions={
     async listaEmpresas({commit}){
         commit('SET_CARREGANDO', true)
-        commit ('SET_ERRO', null)
+        commit ('SET_ERROR', null)
         try {
             const resposta = await api.get('/api/listaEmpresa')
             commit ('SET_EMPRESA', resposta.data)
@@ -64,7 +72,7 @@ const actions={
                 cnpj:empresa.cnpj,
                 ramo:empresa.ramo
             })
-            commit('ADD_EMPRESA0', resposta.data)
+            commit('ADD_EMPRESA', resposta.data)
         } catch (error) {
             console.error('Erro ao cadastrar empresa:', error)
             commit('SET_ERROR','Não foi possível cadastrar a empresa.')            
@@ -73,7 +81,7 @@ const actions={
         }
     },
 
-    async uppdateEmpresa({commit},empresa){
+    async atualizarEmpresa({commit},empresa){
         commit('SET_CARREGANDO',true)
         commit('SET_ERROR',null)
 
@@ -108,16 +116,16 @@ const actions={
         }
     },
 
-    async buscarEmpresaCnpj ({commit},empesa){
+    async buscarEmpresaCnpj ({commit},empresa){
         commit ('SET_CARREGANDO', true)
         commit ('SET_ERROR',null)
 
         try {
             const resposta = await api.get(`/api/empresa/cnpj/${empresa.cnpj}`)
-            commit('SET_VITRINES',resposta.data)
+            commit('SET_EMPRESA_SELECIONADA',resposta.data)
         } catch (error) {
             console.error('Erro ao buscar empresa:',error)
-            commit('SET_ERRO','Ñão foi possível carregar empresa.')           
+            commit('SET_ERROR','Não foi possível carregar empresa.')           
         }finally{
             commit('SET_CARREGANDO', false)
         }

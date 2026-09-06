@@ -1,9 +1,8 @@
 import axios  from 'axios'
-import { config } from 'dotenv'
-const baseURL = process.env.BASEURL||'http://localhost:3000'
+const baseURL =import.meta.env.VITE_API_URL||'http://localhost:3000'
 
 const api = axios.create({
-    baseURL: BASEURL
+    baseURL: baseURL   
 })
 
 api.interceptors.request.use((config)=>{
@@ -18,18 +17,17 @@ api.interceptors.request.use((config)=>{
     }
 })
 
-api.interceptors.response.use((response)=>{
-    try {
-        return response
-    } catch (error) {
+api.interceptors.response.use(
+    (response)=> response,
+    (error) => {
         if(error.response&&error.response.status ===401){
-            console.warn('Sessão expirarda ou não autorizada. Faça login novamente.')
+        console.warn('Sessão expirarda ou não autorizada. Faça login novamente.')
+        localStorage.removeItem('token')
         localStorage.removeItem('usuario')
-        localStorage.removeItem('perfil')
         window.location.href = '/login'            
         }
         return Promise.reject(error)
     }
-})
+)
 
 export default api

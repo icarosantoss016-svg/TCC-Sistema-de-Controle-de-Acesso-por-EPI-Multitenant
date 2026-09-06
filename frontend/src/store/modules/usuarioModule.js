@@ -1,14 +1,15 @@
-import { M } from "vue-router/dist/index-DaOfZHXc.js"
-import api from('@/service/api')
+import api from '@/service/api'
 
 const state ={
     usuario:[],
+    usuarioSelcionado:null,
     carregando:false,
     error:null
 }
 
 const getters= {
     usuario: (state)=>state.usuario,
+    usuarioSelcionado:(state)=>state.usuarioSelcionado,
     todosUsuarios:(state)=>state.usuario,
     estaCarregando:(state)=>state.carregando,
     error:(state)=>state.error
@@ -17,6 +18,12 @@ const getters= {
 const mutations={
     SET_USUARIO(state,usuarioDaApi){
         state.usuario= usuarioDaApi
+    },
+    SET_USUARIO_SELECIONADO(state,usuario){
+        state.usuarioSelcionado=usuario
+    },
+    LIMPAR_USUARIO_SELECIONADO(state){
+        state.usuarioSelcionado=null
     },
     SET_CARREGANDO(state,status){
         state.carregando=status
@@ -60,7 +67,7 @@ const actions={
         commit('SET_ERROR', null)
 
         try {
-            const resposta= await api.get('/api/criarusuario',{
+            const resposta= await api.post('/api/criarusuario',{
                 login:usuario.login,
                 senha:usuario.senha,
                 id_empresa:usuario.id_empresa,
@@ -77,7 +84,7 @@ const actions={
 
     async alterarSenha({commit},usuario){
         commit('SET_CARREGANDO', true)
-        commit('SET_ERRO', null)
+        commit('SET_ERROR', null)
 
         try {
             const resposta = await api.put(`/api/atualizarSenha/${usuario.id_usuario}`,{
@@ -94,11 +101,11 @@ const actions={
 
     async deletarUsuario({commit},id_usuario){
         commit('SET_CARREGANDO', true)
-        commit('SET_ERRO', null)
+        commit('SET_ERROR', null)
 
         try {
             await api.delete(`/api/deletarUsuario/${id_usuario}`)
-            commit('DELETE_VITRINE', id_usuario)
+            commit('DELETE_USUARIO', id_usuario)
         } catch (error) {
             console.error('Erro ao deletar usuario:', error)
             commit('SET_ERROR','Não foi possível deletar usuario.')
@@ -109,11 +116,11 @@ const actions={
 
     async buscarUsuarioId({commit},usuario){
         commit('SET_CARREGANDO', true)
-        commit('SET_ERRO', null)
+        commit('SET_ERROR', null)
 
         try {
             const resposta = await api.get(`/api/buscarUsuario/${usuario.id_usuario}`)
-            commit('SET_USUARIO', resposta.data)
+            commit('SET_USUARIO_SELECIONADO', resposta.data)
         } catch (error) {
             console.error('Erro ao buscar usuarior:', error)
             commit('SET_ERROR', 'Não foi possível buscar usuario.')

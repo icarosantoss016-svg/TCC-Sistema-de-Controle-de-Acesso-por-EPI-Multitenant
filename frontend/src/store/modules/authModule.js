@@ -26,9 +26,16 @@ const mutations = {
 
 const actions={
     async login({commit},{login,senha}){
-        const {dados} = await api.post('auth/login',{login,senha})
 
-        commit('SET_AUTH',{token:dados.token,usuario:{login}})
+        try {
+            const {data} = await api.post('/login',{login,senha})
+    
+            commit('SET_AUTH',{token:data.token,usuario:{login}})
+            
+        } catch (error) {
+            console.error('Erro ao fazer login:', error)
+            throw error
+        }
     },
     logout({commit}){
         commit('LOGOUT')

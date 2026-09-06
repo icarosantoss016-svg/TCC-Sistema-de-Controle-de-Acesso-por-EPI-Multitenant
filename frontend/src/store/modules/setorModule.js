@@ -3,12 +3,14 @@ import api from '@/service/api'
 
 const state={
     setor:[],
+    setorSelecionado:null,
     carregando:false,
     error:null
 }
 
 const getters= {
     setor:(state) => state.setor,
+    setorSelecionado:(state)=>state.setorSelecionado,
     todosSetores:(state) =>state.setor,
     estaCarregando:(state) =>state.carregando,
     error:(state)=> state.error
@@ -17,6 +19,12 @@ const getters= {
 const mutations={
     SET_SETOR(state, setorDaApi){
         state.setor = setorDaApi
+    },
+    SET_SETOR_SELECIONADO(state,setor){
+        state.setorSelecionado=setor
+    },
+    LIMPAR_SETOR_SELECIONADO(state){
+        state.setorSelecionado=null
     },
     SET_CARREGANDO(state,status){
         state.carregando=status
@@ -27,8 +35,8 @@ const mutations={
     ADD_SETOR(state,setor){
         state.setor.push(setor)
     },
-    UDATE_SETOR(state,setorAtt){
-        const index = state.setor.findIdex((s)=>s.id_setor ===setorAtt.id_setor)
+    UPDATE_SETOR(state,setorAtt){
+        const index = state.setor.findIndex((s)=>s.id_setor ===setorAtt.id_setor)
         if(index !== -1){
             state.setor.splice(index,1,setorAtt)
         }
@@ -72,16 +80,16 @@ const actions={
         }
     },
 
-    async altualizarSetor({commit},id_setor){
+    async atualizarSetor({commit},setor){
         commit('SET_CARREGANDO',true)
         commit('SET_ERROR', null)
 
         try {
-            const resposta = await api.put(`/api/atualizarSetor/${id_setor}`,{
+            const resposta = await api.put(`/api/atualizarSetor/${setor.id_setor}`,{
                 nome_setor:setor.nome_setor,
                 id_empresa:setor.id_empresa
             })
-            commit('UDATE_SETOR', resposta.data)
+            commit('UPDATE_SETOR', resposta.data)
         } catch (error) {
             console.error('Erro ao atualizar os dados do setor:',error)
             commit('SET_ERROR','Não foi possível atualizar os dados do setor.')
@@ -100,7 +108,7 @@ const actions={
             commit('DELETE_SETOR', id_setor)
         } catch (error) {
             console.error('Erro ao deletar setor:',error)
-            commit('SET_ERRO', 'Não foi possível deletar setor.')
+            commit('SET_ERROR', 'Não foi possível deletar setor.')
                         
         }finally{
             commit('SET_CARREGANDO',false)
@@ -112,10 +120,12 @@ const actions={
 
         try {
             const resposta =await api.get(`/api/buscarSetor/${setor.id_setor}`)
-            commit('SET_SETOR', resposta.data)
+            commit('SET_SETOR_SELECIONADO', resposta.data)
         } catch (error) {
             console.error('Erro ao buscar setor:', error)
             commit('SET_ERROR', 'Não foi possível buscar setor.')
+        }finally{
+            commit('SET_CARREGANDO', false)
         }
     }
 
