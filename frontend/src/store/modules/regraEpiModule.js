@@ -23,7 +23,7 @@ const mutations={
         state.regraEpiSelecionada = regraEpi
     },
     LIMPAR_REGRA_SELECIONADA(state){
-        state.regraEpiSelecionada=nulll
+        state.regraEpiSelecionada=null
     },
     SET_CARREGANDO(state,status){
         state.carregando = status
