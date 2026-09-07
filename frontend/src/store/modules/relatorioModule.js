@@ -2,7 +2,7 @@ import api from '@/service/api'
 
 const state = {
     listaGeral:{},
-    rankinEpis:{},
+    rankingEpis:{},
     rankingSetores:{},
     relatorioCiclo:{},
     carregando:false,
@@ -11,7 +11,7 @@ const state = {
 
 const getters ={ 
     listaGeral: (state) => state.listaGeral,
-    rankinEpis:(state) => state.rankinEpis,
+    rankingEpis:(state) => state.rankingEpis,
     rankingSetores:(state)=>state.rankingSetores,
     relatorioCiclo:(state) =>state.relatorioCiclo,
     estaCarregando:(state)=>state.carregando,
@@ -23,7 +23,7 @@ const mutations={
         state.listaGeral =dadosApi
     },
     SET_RANKING_EPI(state,dadosApi){
-        state.rankinEpis=dadosApi
+        state.rankingEpis=dadosApi
     },
     SET_RANKING_SETORES(state,dadosApi){
         state.rankingSetores=dadosApi
@@ -41,12 +41,14 @@ const mutations={
 }
 
 const actions={
-    async bucarListaGeral({commit}){
+    async buscarListaGeral({commit},status = null){
         commit('SET_CARREGANDO', true)
         commit('SET_ERROR', null)
 
         try {
-            const resposta =await api.get('/api/relatorios/geral')
+            const resposta =await api.get('/api/relatorios/geral',{
+                params:status ?{status}:{}
+            })
 
             commit('SET_LISTA_GERAL', resposta.data)
         } catch (error) {

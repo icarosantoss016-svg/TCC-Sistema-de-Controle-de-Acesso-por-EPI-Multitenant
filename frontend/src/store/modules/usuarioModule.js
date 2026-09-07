@@ -2,14 +2,14 @@ import api from '@/service/api'
 
 const state ={
     usuario:[],
-    usuarioSelcionado:null,
+    usuarioSelecionado:null,
     carregando:false,
     error:null
 }
 
 const getters= {
     usuario: (state)=>state.usuario,
-    usuarioSelcionado:(state)=>state.usuarioSelcionado,
+    usuarioSelecionado:(state)=>state.usuarioSelecionado,
     todosUsuarios:(state)=>state.usuario,
     estaCarregando:(state)=>state.carregando,
     error:(state)=>state.error
@@ -20,10 +20,10 @@ const mutations={
         state.usuario= usuarioDaApi
     },
     SET_USUARIO_SELECIONADO(state,usuario){
-        state.usuarioSelcionado=usuario
+        state.usuarioSelecionado=usuario
     },
     LIMPAR_USUARIO_SELECIONADO(state){
-        state.usuarioSelcionado=null
+        state.usuarioSelecionado=null
     },
     SET_CARREGANDO(state,status){
         state.carregando=status
