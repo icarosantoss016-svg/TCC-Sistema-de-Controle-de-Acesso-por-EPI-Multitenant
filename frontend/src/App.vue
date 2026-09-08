@@ -35,6 +35,9 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 </div>
 <BaseButton variant="primary">Teste do Botão</BaseButton>
 <BaseButton variant="secondary">Teste Secondary</BaseButton>
+<BaseButton variant="danger">Teste Danger</BaseButton>
+<BaseButton variant="secondary" icon-only>🖊</BaseButton>
+<BaseButton variant="danger" icon-only>🗑</BaseButton>
 
 </template>
 
