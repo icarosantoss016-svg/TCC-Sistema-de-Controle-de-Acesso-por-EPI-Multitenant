@@ -1,4 +1,6 @@
-<script setup></script>
+<script setup>
+import BaseButton from '@/components/ui/BaseButton.vue'
+</script>
 
 <template>
   <h1>You did it!</h1>
@@ -25,6 +27,15 @@
 <h2 class="text-heading font-bold">Sub-titulo teste</h2>
 <p class="text-body">Teste Texto normal do corpo da página.</p>
 <span class="text-caption font-medium text-text-3">Teste legenda</span>
+<h1 class="text-display font-bold">Dashboard</h1>
+<div class="flex gap-4 mt-4">
+  <span class="bg-bg-2 border border-border rounded-sm p-3">sm (6px)</span>
+  <span class="bg-bg-2 border border-border rounded-md p-3">md (10px)</span>
+  <span class="bg-bg-2 border border-border rounded-lg p-3">lg (16px)</span>
+</div>
+<BaseButton variant="primary">Teste do Botão</BaseButton>
+<BaseButton variant="secondary">Teste Secondary</BaseButton>
+
 </template>
 
 <style scoped></style>
