@@ -1,5 +1,12 @@
 <script setup>
 import BaseButton from '@/components/ui/BaseButton.vue'
+import {User,Lock} from 'lucide-vue-next'
+import BaseInput from './components/ui/BaseInput.vue'
+import { ref } from 'vue'
+
+
+const usuario = ref('')
+const senha = ref('')
 </script>
 
 <template>
@@ -38,6 +45,11 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 <BaseButton variant="danger">Teste Danger</BaseButton>
 <BaseButton variant="secondary" icon-only>🖊</BaseButton>
 <BaseButton variant="danger" icon-only>🗑</BaseButton>
+
+<div>
+  <BaseInput v-model="usuario" label="Usuario" placeholder="Digite seu usuário" :icon="User" />
+  <BaseInput v-model="senha" label="Senha" type="password" placeholder="Digite sua senha" :icon="Lock" />
+</div>  
 
 </template>
 
