@@ -54,5 +54,5 @@ return mostrarSenha.value ? 'text' : 'password'
             <component :is="mostrarSenha ? EyeOff:Eye" class="w-4 h-4"/>
     </button>
     </div>
-</template>
+</template>S
 

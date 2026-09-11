@@ -1,56 +1,7 @@
 <script setup>
-import BaseButton from '@/components/ui/BaseButton.vue'
-import {User,Lock} from 'lucide-vue-next'
-import BaseInput from './components/ui/BaseInput.vue'
-import { ref } from 'vue'
-
-
-const usuario = ref('')
-const senha = ref('')
+import LoginView from '@/views/LoginView.vue'
 </script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
-<div class="bg-accent/12 text-accent border border-accent p-4">
-  Teste de destaque
-</div>
-<button class="bg-accent hover:bg-accent-hover active:bg-accent-press text-white px-4 py-2 rounded mt-4">
-  Botão de teste
-</button>
-
-<div class="flex gap-4 mt-4">
-  <span class="bg-success/12 text-success px-3 py-1 rounded">Permitido</span>
-  <span class="bg-danger/12 text-danger px-3 py-1 rounded">Negado</span>
-  <span class="bg-warning/12 text-warning px-3 py-1 rounded">Atenção</span>
-</div>
-<h1 class="text-2xl font-bold">Título em Inter</h1>
-<p class="font-mono">CNPJ: 12.345.678/0001-90</p>
-
-<h1 class="text-display font-bold">Titilo teste</h1>
-<h2 class="text-heading font-bold">Sub-titulo teste</h2>
-<p class="text-body">Teste Texto normal do corpo da página.</p>
-<span class="text-caption font-medium text-text-3">Teste legenda</span>
-<h1 class="text-display font-bold">Dashboard</h1>
-<div class="flex gap-4 mt-4">
-  <span class="bg-bg-2 border border-border rounded-sm p-3">sm (6px)</span>
-  <span class="bg-bg-2 border border-border rounded-md p-3">md (10px)</span>
-  <span class="bg-bg-2 border border-border rounded-lg p-3">lg (16px)</span>
-</div>
-<BaseButton variant="primary">Teste do Botão</BaseButton>
-<BaseButton variant="secondary">Teste Secondary</BaseButton>
-<BaseButton variant="danger">Teste Danger</BaseButton>
-<BaseButton variant="secondary" icon-only>🖊</BaseButton>
-<BaseButton variant="danger" icon-only>🗑</BaseButton>
-
-<div>
-  <BaseInput v-model="usuario" label="Usuario" placeholder="Digite seu usuário" :icon="User" />
-  <BaseInput v-model="senha" label="Senha" type="password" placeholder="Digite sua senha" :icon="Lock" />
-</div>  
-
+  <LoginView />
 </template>
-
-<style scoped></style>
