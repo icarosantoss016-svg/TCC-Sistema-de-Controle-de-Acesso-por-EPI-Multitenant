@@ -7,7 +7,7 @@
             const {status} = req.query
             const filtro = {}
             
-            if (status ==='PERMITDO'||status === 'NEGADO'){
+            if (status ==='PERMITIDO'||status === 'NEGADO'){
                 filtro.status_acesso=status
                 }
 
