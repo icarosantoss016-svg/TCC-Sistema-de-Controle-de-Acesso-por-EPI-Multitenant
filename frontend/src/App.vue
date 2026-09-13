@@ -1,7 +1,10 @@
 <script setup>
-import LoginView from '@/views/LoginView.vue'
+import { ref } from 'vue'
+import EmpresaFormModal from '@/components/empresas/EmpresaFormModal.vue'
+
+const aberto = ref(true)
 </script>
 
 <template>
-  <LoginView />
+  <EmpresaFormModal :aberto="aberto" @fechar="aberto = false" />
 </template>

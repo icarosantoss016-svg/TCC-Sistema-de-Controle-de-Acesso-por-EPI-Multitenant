@@ -51,8 +51,8 @@ return mostrarSenha.value ? 'text' : 'password'
             @click="mostrarSenha=!mostrarSenha"
             class="absolute right-3 top-1/2 -translate-y-1/2 text-text-3 hover:text-text-1"
         >
-            <component :is="mostrarSenha ? EyeOff:Eye" class="w-4 h-4"/>
+            <component :is="mostrarSenha ? EyeOff : Eye" class="w-4 h-4"/>
     </button>
     </div>
-</template>S
+</template>
 
