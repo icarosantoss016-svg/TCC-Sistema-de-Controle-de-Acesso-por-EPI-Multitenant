@@ -23,7 +23,7 @@ const emit= defineEmits(['editar','excluir'])
                 <th class="py-3 px-4 font-medium text-right">Ações</th>
             </tr>
         </thead>
-        <tbody class="bg-accent/5 c">
+        <tbody class="bg-accent/5">
             <tr
                 v-for="empresa in empresas"
                 :key="empresa.id_empresa"
@@ -32,7 +32,7 @@ const emit= defineEmits(['editar','excluir'])
                 <td class="py-3 px-4 font-medium text-text-0">{{ empresa.nome }}</td>
                 <td class="py-3 px-4 font-mono text-text-0">{{ empresa.cnpj }}</td>
                 <td class="py-3 px-4">{{ empresa.ramo }}</td>
-                <td>{{ empresa.quantidadeSetores }} setores</td>
+                <td class="py-3 px-4">{{ empresa.quantidadeSetores }} setores</td>
                 <td class="py-3 px-4">
                     <div class="flex gap-2 justify-end">
                         <BaseButton variant="secondary" icon-only @click="emit('editar',empresa)">
