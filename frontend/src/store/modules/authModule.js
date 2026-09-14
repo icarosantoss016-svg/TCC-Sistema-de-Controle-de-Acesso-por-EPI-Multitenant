@@ -29,25 +29,10 @@ const actions = {
     try {
       const { data } = await api.post('/login', { login, senha })
 
-<<<<<<< HEAD
-        try {
-            const {data} = await api.post('/login',{login,senha})
-    
-            commit('SET_AUTH',{token:data.token,usuario:data.usuario})
-            
-        } catch (error) {
-            console.error('Erro ao fazer login:', error)
-            throw error
-        }
-    },
-    logout({commit}){
-        commit('LOGOUT')
-=======
       commit('SET_AUTH', { token: data.token, usuario: { login } })
     } catch (error) {
       console.error('Erro ao fazer login:', error)
       throw error
->>>>>>> 991652c069482f638cd6ec4ddbee66bfcc05c514
     }
   },
   logout({ commit }) {
