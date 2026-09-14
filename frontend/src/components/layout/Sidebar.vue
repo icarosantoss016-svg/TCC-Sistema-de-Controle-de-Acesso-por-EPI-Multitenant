@@ -1,8 +1,3 @@
-<!--
-  Componente: Sidebar.vue
-  Descrição: Barra de navegação lateral fixa para as telas administrativas do sistema SafeZone.
-  Permite navegação entre as seções de Empresas, Setores, Usuários e Dashboard.
--->
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
@@ -47,9 +42,9 @@ const itensMenu = [
 const usuarioAutenticado = computed(() => {
   const usuarioStore = store?.state?.auth?.usuario
   return {
-    nome: usuarioStore?.nome || usuarioStore?.login || 'Lucas Cintra',
+    nome: usuarioStore?.nome || usuarioStore?.login || '',
     cargo: usuarioStore?.cargo || 'Administrador',
-    iniciais: 'LC',
+    iniciais: 'SS',
   }
 })
 
