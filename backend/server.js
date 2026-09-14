@@ -1,7 +1,6 @@
 const express = require('express');
 const sequelize = require('./config/database');
 require('./models')
-const cors = require('cors')
 
 const acessoRoutes = require('./routers/acessoRoutes')
 const setorRoutes = require('./routers/setorRoutes')
@@ -17,7 +16,8 @@ const { criarAdminPadrao} = require('./controllers/usuarioController')
 const app = express();
 const PORT = 3000;
 
-app.use(cors())
+app.set('view engine', 'ejs');
+
 app.use(express.json());
 app.use(acessoRoutes)
 app.use(setorRoutes)
