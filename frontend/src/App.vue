@@ -1,7 +1,7 @@
 <script setup>
-import LoginView from '@/views/LoginView.vue'
+import EmpresaView from '@/views/EmpresaView.vue'
 </script>
 
 <template>
-  <LoginView />
+  <EmpresaView />
 </template>

@@ -1,22 +1,24 @@
 <script setup>
 import { computed } from 'vue'
 
-const props=defineProps({
-    variant:{
-        type:String,
-        default:'primary'
-    },
-    iconOnly:{
-        type:Boolean,
-        default:false
-    },
-    disabled:{
-        type:Boolean,
-        default:false
-    }
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'primary',
+  },
+  iconOnly: {
+    type: Boolean,
+    default: false,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
 })
-const classeForma = computed(()=>{
-    return props.iconOnly ? 'w-8 h-8 rounded-icon flex items-center justify-center' : 'h-11 px-4 rounded-md'
+const classeForma = computed(() => {
+  return props.iconOnly
+    ? 'w-8 h-8 rounded-icon flex items-center justify-center'
+    : 'h-11 px-4 rounded-md'
 })
 
 const classesCor = computed(() => {
@@ -31,16 +33,15 @@ const classesCor = computed(() => {
   return 'bg-bg-2 hover:bg-bg-3 text-text-1'
 })
 
-const classesEstado = computed(()=>{
-    return props.disabled ? 'opacity-50 cursor-not-allowed':''
+const classesEstado = computed(() => {
+  return props.disabled ? 'opacity-50 cursor-not-allowed' : ''
 })
-
 </script>
 <template>
-    <button 
+  <button
     :disabled="disabled"
-    :class="[classeForma, classesCor,classesEstado,'font-medium transition-colors']">
+    :class="[classeForma, classesCor, classesEstado, 'font-medium transition-colors']"
+  >
     <slot />
-    </button>
-
+  </button>
 </template>
