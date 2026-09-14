@@ -3,5 +3,5 @@ import EmpresaView from '@/views/EmpresaView.vue'
 </script>
 
 <template>
-<EmpresaView/>
+  <EmpresaView />
 </template>
