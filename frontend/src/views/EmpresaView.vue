@@ -69,6 +69,7 @@ async function confirmarExclusao() {
   excluindo.value = true
   try {
     await store.dispatch('empresa/deletarEmpresa', empresaParaExcluir.value.id_empresa)
+    await store.dispatch('empresa/listaEmpresas')
     confirmAberto.value = false
   } finally {
     excluindo.value = false
