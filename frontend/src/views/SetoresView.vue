@@ -1,8 +1,3 @@
-<!--
-  View: SetoresView.vue
-  Descrição: Tela administrativa para gerenciamento de setores industriais e parametrização
-  de regras de EPI obrigatórias por setor. Integra com a Sidebar, modais de cadastro e diálogos de confirmação.
--->
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
@@ -206,7 +201,7 @@ async function executarExclusao() {
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="text-caption font-semibold text-text-3 uppercase tracking-wider">
-              Módulo de Câmeras & IA
+              Módulo de Câmeras
             </span>
             <span
               class="text-caption font-mono font-semibold text-accent bg-accent/12 px-2 py-0.5 rounded-sm"
@@ -320,7 +315,7 @@ async function executarExclusao() {
                   type="button"
                   @click="abrirAdicionarEpi(setor)"
                   class="w-8 h-8 rounded-icon bg-bg-2 hover:bg-bg-3 flex items-center justify-center text-text-1 hover:text-accent transition-colors cursor-pointer"
-                  title="Adicionar EPI a este setor"
+                  title="Configurar EPIs deste setor"
                 >
                   <Plus class="w-4 h-4" />
                 </button>
@@ -388,7 +383,7 @@ async function executarExclusao() {
                   @click="abrirAdicionarEpi(setor)"
                   class="text-accent hover:text-accent-hover font-medium cursor-pointer"
                 >
-                  + Adicionar EPI
+                  + Configurar EPIs
                 </button>
               </div>
             </div>

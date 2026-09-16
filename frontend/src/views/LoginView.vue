@@ -4,6 +4,7 @@ import { User, Lock, ArrowRight } from 'lucide-vue-next'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 
 const login = ref('')
 const senha = ref('')
@@ -11,6 +12,7 @@ const carregando = ref(false)
 const erroLogin = ref('')
 
 const store = useStore()
+const router = useRouter()
 
 async function aoEnviar() {
   carregando.value = true
@@ -21,10 +23,12 @@ async function aoEnviar() {
       login: login.value,
       senha: senha.value,
     })
+    router.push('/empresas')
   } catch {
     erroLogin.value = 'Usuário ou senha inválidos.'
   } finally {
     carregando.value = false
+
   }
 }
 </script>
