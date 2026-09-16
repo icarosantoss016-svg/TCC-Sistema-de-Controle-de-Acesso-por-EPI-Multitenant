@@ -17,7 +17,7 @@ const getters = {
 
 const mutations = {
   SET_REGRA(state, regraEpiDaApi) {
-    state.regraEpi = regraEpiDaApi
+    state.regraEpi = Array.isArray(regraEpiDaApi) ? regraEpiDaApi : regraEpiDaApi?.regras || []
   },
   SET_REGRA_SELECIONADA(state, regraEpi) {
     state.regraEpiSelecionada = regraEpi
@@ -32,13 +32,15 @@ const mutations = {
     state.error = error
   },
   ADD_REGRA(state, regraEpi) {
-    state.regraEpi.push(regraEpi)
+    const item = regraEpi?.novaRegra || regraEpi?.regra || regraEpi
+    state.regraEpi.push(item)
   },
   UPDATE_REGRA(state, regraEpiAtt) {
-    const index = state.regraEpi.findIndex((r) => r.id_regra === regraEpiAtt.id_regra)
+    const item = regraEpiAtt?.regra || regraEpiAtt
+    const index = state.regraEpi.findIndex((r) => r.id_regra === item.id_regra)
 
     if (index !== -1) {
-      state.regraEpi.splice(index, 1, regraEpiAtt)
+      state.regraEpi.splice(index, 1, item)
     }
   },
   DELETE_REGRA(state, id_regra) {
