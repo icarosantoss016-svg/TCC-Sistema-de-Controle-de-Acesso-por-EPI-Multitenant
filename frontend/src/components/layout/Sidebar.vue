@@ -1,82 +1,115 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useStore } from 'vuex'
-import { Building2, Video, IdCard, BarChart3, ChevronDown } from 'lucide-vue-next'
+import {
+  Building2,
+  Video,
+  IdCard,
+  UserCheck,
+  BarChart3,
+  ChevronDown,
+  LogOut,
+} from 'lucide-vue-next'
 
 const route = useRoute()
+const router = useRouter()
 const store = useStore()
 
-// Lista fixa de itens do menu de navegação lateral (na ordem solicitada)
-const itensMenu = [
+const menuAberto = ref(false)
+
+// Lista mestre de itens de navegação com restrição por perfil
+const todosItensMenu = [
   {
     titulo: 'Empresas',
-    subtitulo: 'Parceiras e setores',
+    subtitulo: 'Parceiras e clientes',
     rota: '/empresas',
     icone: Building2,
+    perfis: ['ADMIN'],
   },
   {
     titulo: 'Setores',
     subtitulo: 'Monitoramento câmeras',
     rota: '/setores',
     icone: Video,
+    perfis: ['ADMIN', 'ADM_EMPRESA', 'USUARIO'],
   },
   {
     titulo: 'Usuários',
-    subtitulo: 'Técnicos e engenheiros',
+    subtitulo: 'Técnicos e gestores',
     rota: '/usuarios',
     icone: IdCard,
+    perfis: ['ADMIN', 'ADM_EMPRESA'],
+  },
+  {
+    titulo: 'Solicitações',
+    subtitulo: 'Revisão de acessos',
+    rota: '/solicitacoes-acesso',
+    icone: UserCheck,
+    perfis: ['ADMIN'],
   },
   {
     titulo: 'Dashboard',
     subtitulo: 'Métricas e conformidade',
     rota: '/dashboard',
     icone: BarChart3,
+    perfis: ['ADMIN', 'ADM_EMPRESA', 'USUARIO'],
   },
 ]
 
 /**
- * Dados do usuário autenticado obtidos do Vuex (se houver), ou valores padrão de placeholder.
- * // TODO: substituir por dados do usuário autenticado quando o módulo de auth estiver 100% integrado
+ * Dados reais do usuário autenticado no Vuex/localStorage
  */
 const usuarioAutenticado = computed(() => {
-  const usuarioStore = store?.state?.auth?.usuario
+  const usuarioStore = store?.state?.auth?.usuario || JSON.parse(localStorage.getItem('usuario') || 'null')
+  const nome = usuarioStore?.nome || usuarioStore?.login || 'Usuário'
+  const partes = nome.trim().split(' ')
+  const iniciais = partes.length > 1
+    ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
+    : nome.substring(0, 2).toUpperCase()
+
   return {
-    nome: usuarioStore?.nome || usuarioStore?.login || '',
-    cargo: usuarioStore?.cargo || 'Administrador',
-    iniciais: 'SS',
+    id: usuarioStore?.id || usuarioStore?.id_usuario,
+    nome,
+    login: usuarioStore?.login || '',
+    cargo: usuarioStore?.cargo || (usuarioStore?.perfil === 'ADMIN' ? 'Administrador' : 'Gestor de Segurança'),
+    perfil: usuarioStore?.perfil || 'USUARIO',
+    iniciais,
   }
 })
 
 /**
- * Função para verificar se determinado item do menu corresponde à rota atual.
- * Compara o caminho da URL (route.path) e trata o fallback da página inicial ('/').
+ * Filtra os itens visíveis no menu conforme o perfil do usuário logado
+ */
+const itensMenuVisiveis = computed(() => {
+  const perfil = usuarioAutenticado.value.perfil
+  return todosItensMenu.filter((item) => item.perfis.includes(perfil))
+})
+
+/**
+ * Verifica se a rota do item corresponde à URL ativa
  */
 function isItemAtivo(rotaItem) {
   if (!route) return false
-
-  // Rota exata ou sub-rota
   if (route.path === rotaItem || route.path.startsWith(`${rotaItem}/`)) {
     return true
   }
-
-  // Se a rota atual for a raiz ('/'), destaca 'Empresas' como padrão inicial
-  if (route.path === '/' && rotaItem === '/empresas') {
-    return true
-  }
-
   return false
 }
 
-// TODO: implementar expansão do menu de perfil/logout ao clicar no rodapé
-function abrirMenuUsuario() {
-  // Ação visual / stub para futura integração
+function alternarMenuUsuario() {
+  menuAberto.value = !menuAberto.value
+}
+
+async function aoSair() {
+  await store.dispatch('auth/logout')
+  router.push('/login')
 }
 </script>
 
 <template>
   <aside
-    class="w-[264px] h-screen shrink-0 bg-bg-1 border-r border-border flex flex-col justify-between select-none sticky top-0"
+    class="w-[264px] h-screen shrink-0 bg-bg-1 border-r border-border flex flex-col justify-between select-none sticky top-0 z-30"
   >
     <!-- Topo da Sidebar: Cabeçalho com Logo e Navegação -->
     <div class="flex flex-col">
@@ -103,7 +136,7 @@ function abrirMenuUsuario() {
       <!-- Lista de Itens do Menu -->
       <nav class="px-3 space-y-1">
         <router-link
-          v-for="item in itensMenu"
+          v-for="item in itensMenuVisiveis"
           :key="item.rota"
           :to="item.rota"
           class="flex items-center gap-3 px-3.5 py-2.5 rounded-md transition-colors group"
@@ -143,11 +176,34 @@ function abrirMenuUsuario() {
       </nav>
     </div>
 
-    <!-- Rodapé: Card do Usuário Logado -->
-    <div class="border-t border-border p-3">
+    <!-- Rodapé: Card do Usuário Logado + Dropdown de Logout -->
+    <div class="border-t border-border p-3 relative">
+      <!-- Menu flutuante de ações do usuário -->
+      <div
+        v-if="menuAberto"
+        class="absolute bottom-16 left-3 right-3 bg-bg-0 border border-border rounded-lg shadow-lg p-1 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150"
+      >
+        <div class="px-3 py-2 border-b border-border-soft mb-1">
+          <p class="text-caption font-semibold text-text-0 truncate">
+            {{ usuarioAutenticado.nome }}
+          </p>
+          <p class="text-[11px] text-text-3 font-mono truncate">
+            {{ usuarioAutenticado.login }}
+          </p>
+        </div>
+        <button
+          type="button"
+          @click="aoSair"
+          class="w-full flex items-center gap-2 px-3 py-2 text-caption font-medium text-danger hover:bg-danger/10 rounded-md transition-colors cursor-pointer"
+        >
+          <LogOut class="w-4 h-4 shrink-0" />
+          <span>Sair da conta</span>
+        </button>
+      </div>
+
       <button
         type="button"
-        @click="abrirMenuUsuario"
+        @click="alternarMenuUsuario"
         class="w-full flex items-center gap-3 p-2 rounded-md hover:bg-bg-2 transition-colors cursor-pointer text-left focus:outline-none"
       >
         <!-- Avatar com indicador de status online -->
@@ -171,8 +227,11 @@ function abrirMenuUsuario() {
           </span>
         </div>
 
-        <!-- Ícone de expansão (stub para menu da conta) -->
-        <ChevronDown class="w-4 h-4 text-text-3 shrink-0 ml-auto" />
+        <!-- Ícone de expansão -->
+        <ChevronDown
+          class="w-4 h-4 text-text-3 shrink-0 ml-auto transition-transform duration-200"
+          :class="[menuAberto ? 'rotate-180 text-text-0' : '']"
+        />
       </button>
     </div>
   </aside>

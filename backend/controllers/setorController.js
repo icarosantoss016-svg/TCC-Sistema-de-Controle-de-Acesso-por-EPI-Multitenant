@@ -1,99 +1,148 @@
-const Setor = require('../models/setor')
-const Empresa = require ('../models/empresa')
-
+const { Setor, Empresa, Usuario, UsuarioSetor, RegraEpi } = require('../models')
 
 exports.criarSetor = async (req, res) => {
-    try {
-        const { nome_setor, id_empresa } = req.body
+  try {
+    const { nome_setor, id_empresa } = req.body
+    const usuarioLogado = req.usuario
 
-        if (!nome_setor || nome_setor.trim() === "") {
-            return res.status(400).json({ erro: 'Nome do setor é obriatório' })
-        }
-
-        if(!id_empresa|| isNaN(id_empresa)){
-            return res.status(400).json({error:'Id da empresa é obrigatório e deve ser um número.'})
-        }
-
-        const empresa = await Empresa.findOne({
-            where:{id_empresa:id_empresa}
-        })
-        if(!empresa|| empresa===null|| empresa===undefined){
-            return res.status(404).json({error:'Empresa não localizada através do ID, nenhum setor foi cadastrado.'})
-        }
-
-        const novoSetor = await Setor.create({ nome_setor, id_empresa:empresa.id_empresa})
-
-        return res.status(201).json({ menssagem: 'Setor criado com sucesso.', setor: novoSetor })
-    } catch (erro) {
-        console.error("Erro ao criar setor:", erro);
-        return res.status(500).json({ erro: "Erro interno ao criar setor" });
+    if (!nome_setor || nome_setor.trim() === '') {
+      return res.status(400).json({ error: 'Nome do setor é obrigatório.' })
     }
+
+    let empresaIdFinal = id_empresa
+
+    if (usuarioLogado?.perfil === 'ADM_EMPRESA' || usuarioLogado?.perfil === 'USUARIO') {
+      empresaIdFinal = usuarioLogado.id_empresa || (usuarioLogado.empresas_ids && usuarioLogado.empresas_ids[0])
+    }
+
+    if (!empresaIdFinal || isNaN(empresaIdFinal)) {
+      return res.status(400).json({ error: 'ID da empresa é obrigatório e deve ser um número.' })
+    }
+
+    const empresa = await Empresa.findByPk(empresaIdFinal)
+    if (!empresa) {
+      return res.status(404).json({ error: 'Empresa não localizada através do ID.' })
+    }
+
+    const novoSetor = await Setor.create({
+      nome_setor: nome_setor.trim(),
+      id_empresa: empresa.id_empresa,
+    })
+
+    // Se quem criou foi um USUARIO, auto-atribui o setor a ele
+    if (usuarioLogado?.id) {
+      await UsuarioSetor.create({
+        id_usuario: usuarioLogado.id,
+        id_setor: novoSetor.id_setor,
+      }).catch(() => {})
+    }
+
+    return res.status(201).json({
+      mensagem: 'Setor criado com sucesso.',
+      setor: novoSetor,
+    })
+  } catch (erro) {
+    console.error('Erro ao criar setor:', erro)
+    return res.status(500).json({ error: 'Erro interno ao criar setor.' })
+  }
 }
 
 exports.listarSetor = async (req, res) => {
-    try {
-        const setor = await Setor.findAll()
-        res.status(200).json({ setor })
-    } catch (erro) {
-        console.error("Erro ao listar setores:", erro);
-        return res.status(500).json({ erro: 'Erro interno ao listar os setores.' })
+  try {
+    const usuarioLogado = req.usuario
+    const filtro = {}
+
+    if (usuarioLogado?.perfil === 'ADM_EMPRESA') {
+      const empresasIds = usuarioLogado.empresas_ids?.length > 0
+        ? usuarioLogado.empresas_ids
+        : [usuarioLogado.id_empresa]
+      filtro.id_empresa = empresasIds
+    } else if (usuarioLogado?.perfil === 'USUARIO') {
+      // Busca os IDs dos setores atribuídos
+      const vinculos = await UsuarioSetor.findAll({
+        where: { id_usuario: usuarioLogado.id },
+        attributes: ['id_setor'],
+      })
+      const setoresPermitidos = vinculos.map((v) => v.id_setor)
+      filtro.id_setor = setoresPermitidos
     }
+
+    const setores = await Setor.findAll({
+      where: filtro,
+      include: [
+        { model: Empresa, attributes: ['id_empresa', 'nome', 'cnpj'] },
+        { model: RegraEpi },
+      ],
+      order: [['id_setor', 'ASC']],
+    })
+
+    res.status(200).json({ setor: setores })
+  } catch (erro) {
+    console.error('Erro ao listar setores:', erro)
+    return res.status(500).json({ error: 'Erro interno ao listar os setores.' })
+  }
 }
 
 exports.buscarSetor = async (req, res) => {
-    try {
-        const { id } = req.params
-        const setor = await Setor.findByPk(id)
+  try {
+    const { id } = req.params
+    const setor = await Setor.findByPk(id, {
+      include: [
+        { model: Empresa, attributes: ['id_empresa', 'nome', 'cnpj'] },
+        { model: RegraEpi },
+      ],
+    })
 
-        if (!setor) {
-            return res.status(404).json({ erro: 'Setor não encontrado.' })
-        }
-        return res.status(200).json(setor)
-    } catch (erro) {
-        console.error("Erro ao buscar o setor:", erro);
-        return res.status(500).json({ erro: 'Erro interno ao buscar o setor.' })
+    if (!setor) {
+      return res.status(404).json({ error: 'Setor não encontrado.' })
     }
+    return res.status(200).json(setor)
+  } catch (erro) {
+    console.error('Erro ao buscar o setor:', erro)
+    return res.status(500).json({ error: 'Erro interno ao buscar o setor.' })
+  }
 }
 
 exports.atualizarSetor = async (req, res) => {
-    try {
-        
-        const setor = await Setor.findByPk(req.params.id)
-        const { nome_setor} = req.body
+  try {
+    const setor = await Setor.findByPk(req.params.id)
+    const { nome_setor, id_empresa } = req.body
 
-        if (!nome_setor || nome_setor.trim() === "") {
-            return res.status(400).json({ erro: 'Nome do setor é obriatório' })
-        }
-
-        if(!setor){
-            return res.status(404).json({error:'Setor não localizado.'})
-        }
-
-        await setor.update({ nome_setor:nome_setor })
-
-        res.status(200).json({mensagem:'Setor atualizado com sucesso.',setor})
-
-    } catch (erro) {
-        console.error("Erro ao editar setor:", erro);
-        return res.status(500).json({ erro: "Erro interno ao editar setor" });
-
+    if (!nome_setor || nome_setor.trim() === '') {
+      return res.status(400).json({ error: 'Nome do setor é obrigatório.' })
     }
+
+    if (!setor) {
+      return res.status(404).json({ error: 'Setor não localizado.' })
+    }
+
+    const dados = { nome_setor: nome_setor.trim() }
+    if (id_empresa && req.usuario?.perfil === 'ADMIN') {
+      dados.id_empresa = id_empresa
+    }
+
+    await setor.update(dados)
+
+    res.status(200).json({ mensagem: 'Setor atualizado com sucesso.', setor })
+  } catch (erro) {
+    console.error('Erro ao editar setor:', erro)
+    return res.status(500).json({ error: 'Erro interno ao editar setor.' })
+  }
 }
 
-exports.deletarSetor = async (req,res) =>{
-    try {
-        const { id} = req.params
-        const setor = await Setor.findByPk(id)
+exports.deletarSetor = async (req, res) => {
+  try {
+    const { id } = req.params
+    const setor = await Setor.findByPk(id)
 
-        if(!setor){
-            return res.status(404).json({erro: 'Setor não encontrado.'})
-        }
-
-        await setor.destroy()
-        res.status(200).json({mensagem: 'Setor deletado com sucesso.'})
-    } catch (erro) {
-        console.error("Erro ao deletar setor:", erro);
-        return res.status(500).json({ erro: "Erro interno ao deletar setor" });
-        
+    if (!setor) {
+      return res.status(404).json({ error: 'Setor não encontrado.' })
     }
+
+    await setor.destroy()
+    res.status(200).json({ mensagem: 'Setor deletado com sucesso.' })
+  } catch (erro) {
+    console.error('Erro ao deletar setor:', erro)
+    return res.status(500).json({ error: 'Erro interno ao deletar setor.' })
+  }
 }

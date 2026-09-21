@@ -14,6 +14,11 @@ import {
   Ear,
   Shirt,
   X,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  ShieldAlert,
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -25,12 +30,31 @@ import RegraEpiModal from '@/components/setores/RegraEpiModal.vue'
 
 const store = useStore()
 
-// Carrega os dados de setores, regras de EPI e empresas ao montar o componente
+// Estados dos logs de acesso
+const logsAcesso = computed(() => {
+  const data = store.getters['relatorio/listaGeral']
+  return Array.isArray(data) ? data : []
+})
+const carregandoLogs = computed(() => store.getters['relatorio/estaCarregando'])
+const filtroStatusLog = ref('TODOS')
+
+async function carregarLogsAcesso() {
+  const status = filtroStatusLog.value === 'TODOS' ? null : filtroStatusLog.value
+  await store.dispatch('relatorio/buscarListaGeral', status)
+}
+
+function alterarFiltroLog(status) {
+  filtroStatusLog.value = status
+  carregarLogsAcesso()
+}
+
+// Carrega os dados de setores, regras de EPI, empresas e logs ao montar o componente
 onMounted(async () => {
   await Promise.all([
     store.dispatch('setor/listaSetores'),
     store.dispatch('regraEpi/listarRegras'),
     store.dispatch('empresa/listaEmpresas'),
+    carregarLogsAcesso(),
   ])
 })
 
@@ -185,6 +209,35 @@ async function executarExclusao() {
     mostrarToast('Não foi possível realizar a exclusão. Tente novamente.', 'error')
   } finally {
     excluindo.value = false
+  }
+}
+
+function formatarDataHora(data) {
+  if (!data) return '-'
+  try {
+    const d = new Date(data)
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  } catch {
+    return String(data)
+  }
+}
+
+function obterItensAusentes(log) {
+  if (log.status_acesso === 'PERMITIDO') return []
+  if (!log.itens_esquecidos) return []
+  if (Array.isArray(log.itens_esquecidos)) return log.itens_esquecidos
+  try {
+    const parsed = JSON.parse(log.itens_esquecidos)
+    return Array.isArray(parsed) ? parsed : [parsed]
+  } catch {
+    return [String(log.itens_esquecidos)]
   }
 }
 </script>
@@ -406,6 +459,180 @@ async function executarExclusao() {
           <p class="text-caption text-text-2 mt-1">
             Clique aqui para parametrizar um novo posto monitorado
           </p>
+        </div>
+      </div>
+
+      <!-- Seção: Histórico de Tentativas de Acesso -->
+      <div class="mt-12 bg-bg-1 rounded-xl border border-border overflow-hidden shadow-sm">
+        <!-- Cabeçalho da Seção -->
+        <div class="p-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <Clock class="w-5 h-5 text-accent" />
+              <h3 class="text-heading font-bold text-text-0">Histórico de Tentativas de Acesso</h3>
+            </div>
+            <p class="text-caption text-text-2 mt-1">
+              Registros recentes de triagem de EPIs nos postos monitorados
+            </p>
+          </div>
+
+          <!-- Filtros de Status & Atualizar -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="inline-flex rounded-lg border border-border bg-bg-2 p-1">
+              <button
+                type="button"
+                @click="alterarFiltroLog('TODOS')"
+                class="px-3 py-1 text-caption font-medium rounded-md transition-colors"
+                :class="
+                  filtroStatusLog === 'TODOS'
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-text-2 hover:text-text-0'
+                "
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                @click="alterarFiltroLog('PERMITIDO')"
+                class="px-3 py-1 text-caption font-medium rounded-md transition-colors"
+                :class="
+                  filtroStatusLog === 'PERMITIDO'
+                    ? 'bg-success text-white shadow-sm'
+                    : 'text-text-2 hover:text-text-0'
+                "
+              >
+                Permitidos
+              </button>
+              <button
+                type="button"
+                @click="alterarFiltroLog('NEGADO')"
+                class="px-3 py-1 text-caption font-medium rounded-md transition-colors"
+                :class="
+                  filtroStatusLog === 'NEGADO'
+                    ? 'bg-danger text-white shadow-sm'
+                    : 'text-text-2 hover:text-text-0'
+                "
+              >
+                Negados
+              </button>
+            </div>
+
+            <BaseButton
+              variant="outline"
+              size="sm"
+              @click="carregarLogsAcesso"
+              :disabled="carregandoLogs"
+              title="Atualizar lista de logs"
+            >
+              <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': carregandoLogs }" />
+            </BaseButton>
+          </div>
+        </div>
+
+        <!-- Tabela de Logs -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-bg-2/50 border-b border-border text-caption font-semibold text-text-2">
+                <th class="py-3.5 px-6">Data / Hora</th>
+                <th class="py-3.5 px-6">Setor</th>
+                <th class="py-3.5 px-6">Empresa</th>
+                <th class="py-3.5 px-6">Status</th>
+                <th class="py-3.5 px-6">EPIs Ausentes / Detalhes</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              <!-- Loading State -->
+              <tr v-if="carregandoLogs">
+                <td colspan="5" class="py-12 text-center text-text-2">
+                  <div class="flex items-center justify-center gap-2">
+                    <RefreshCw class="w-5 h-5 animate-spin text-accent" />
+                    <span>Carregando histórico de acessos...</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Empty State -->
+              <tr v-else-if="logsAcesso.length === 0">
+                <td colspan="5" class="py-12 text-center text-text-3">
+                  <Clock class="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p class="font-medium text-body">Nenhuma tentativa de acesso registrada</p>
+                  <p class="text-caption mt-1">Os acessos processados pelas câmeras aparecerão aqui em tempo real.</p>
+                </td>
+              </tr>
+
+              <!-- Linhas de Dados -->
+              <tr
+                v-for="log in logsAcesso"
+                :key="log.id_log || log.id"
+                class="hover:bg-bg-2/30 transition-colors"
+              >
+                <!-- Data / Hora -->
+                <td class="py-4 px-6 text-body font-mono text-text-1">
+                  {{ formatarDataHora(log.data_hora || log.createdAt) }}
+                </td>
+
+                <!-- Setor -->
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-text-0">
+                      {{ log.Setor?.nome_setor || log.Setor?.nome || 'Posto não identificado' }}
+                    </span>
+                    <span
+                      v-if="log.Setor?.id_setor"
+                      class="text-caption font-mono text-text-3 px-1.5 py-0.5 rounded bg-bg-2 border border-border"
+                    >
+                      {{ formatarIdSetor(log.Setor.id_setor) }}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Empresa -->
+                <td class="py-4 px-6 text-body text-text-2">
+                  {{ log.Setor?.Empresa?.nome || '-' }}
+                </td>
+
+                <!-- Status -->
+                <td class="py-4 px-6">
+                  <span
+                    v-if="log.status_acesso === 'PERMITIDO'"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-caption font-medium bg-success/10 text-success border border-success/20"
+                  >
+                    <CheckCircle2 class="w-3.5 h-3.5" />
+                    Permitido
+                  </span>
+                  <span
+                    v-else
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-caption font-medium bg-danger/10 text-danger border border-danger/20"
+                  >
+                    <XCircle class="w-3.5 h-3.5" />
+                    Negado
+                  </span>
+                </td>
+
+                <!-- EPIs Ausentes / Detalhes -->
+                <td class="py-4 px-6">
+                  <div v-if="log.status_acesso === 'PERMITIDO'" class="flex items-center gap-1 text-caption text-text-3">
+                    <CheckCircle2 class="w-3.5 h-3.5 text-success" />
+                    <span>Em conformidade</span>
+                  </div>
+                  <div v-else-if="obterItensAusentes(log).length > 0" class="flex flex-wrap gap-1.5">
+                    <span
+                      v-for="(item, idx) in obterItensAusentes(log)"
+                      :key="idx"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-caption font-medium bg-danger/10 text-danger border border-danger/20"
+                    >
+                      <ShieldAlert class="w-3 h-3" />
+                      {{ item }}
+                    </span>
+                  </div>
+                  <span v-else class="text-caption text-text-3">
+                    EPIs ausentes não especificados
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </main>
