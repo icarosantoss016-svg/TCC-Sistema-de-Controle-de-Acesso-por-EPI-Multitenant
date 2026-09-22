@@ -5,6 +5,7 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Toast from '@/components/ui/Toast.vue'
 import SolicitarAcessoModal from '@/components/solicitacoes/SolicitarAcessoModal.vue'
+import RedefinirSenhaModal from '@/components/usuarios/RedefinirSenhaModal.vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 
@@ -13,6 +14,7 @@ const senha = ref('')
 const carregando = ref(false)
 const erroLogin = ref('')
 const modalSolicitacaoAberto = ref(false)
+const modalRedefinirAberto = ref(false)
 
 // Toast de feedback
 const toastVisivel = ref(false)
@@ -85,9 +87,20 @@ async function aoEnviar() {
           placeholder="••••••••"
           :icon="Lock"
         />
+
+        <div class="flex justify-end -mt-1 mb-2">
+          <button
+            type="button"
+            @click="modalRedefinirAberto = true"
+            class="text-[12px] font-medium text-text-2 hover:text-accent transition-colors cursor-pointer"
+          >
+            Esqueceu sua senha? <span class="font-semibold text-accent">Redefinir sua senha</span>
+          </button>
+        </div>
+
         <p v-if="erroLogin" class="text-caption text-danger">{{ erroLogin }}</p>
 
-        <BaseButton variant="primary" :disabled="carregando" class="mt-3">
+        <BaseButton variant="primary" :disabled="carregando" class="mt-2">
           <span class="flex items-center justify-center gap-1">
             {{ carregando ? 'Entrando...' : 'Entrar' }}
             <ArrowRight v-if="!carregando" class="w-4 h-4 mt-1" />
@@ -96,8 +109,8 @@ async function aoEnviar() {
       </form>
 
       <!-- Divisor e link para solicitação pública de acesso -->
-      <div class="mt-6 pt-4 border-t border-border-soft text-center">
-        <p class="text-caption text-text-2 mb-2">Ainda não possui credencial?</p>
+      <div class="mt-6 pt-4 border-t border-border-soft text-center flex flex-col gap-2 items-center">
+        <p class="text-caption text-text-2">Ainda não possui credencial?</p>
         <button
           type="button"
           @click="modalSolicitacaoAberto = true"
@@ -108,6 +121,13 @@ async function aoEnviar() {
         </button>
       </div>
     </div>
+
+    <!-- Modal de Redefinição de Senha -->
+    <RedefinirSenhaModal
+      :aberto="modalRedefinirAberto"
+      @fechar="modalRedefinirAberto = false"
+      @sucesso="mostrarToast"
+    />
 
     <!-- Modal Público de Solicitação de Acesso -->
     <SolicitarAcessoModal

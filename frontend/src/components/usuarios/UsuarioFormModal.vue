@@ -45,10 +45,12 @@ const todosSetores = computed(() => store.getters['setor/todosSetores'] || [])
 const setoresDisponiveis = computed(() => {
   if (ehAdminGeral.value) {
     if (empresasSelecionadas.value.length === 0) return todosSetores.value
-    return todosSetores.value.filter((s) => empresasSelecionadas.value.includes(s.id_empresa))
+    return todosSetores.value.filter((s) => empresasSelecionadas.value.map(Number).includes(Number(s.id_empresa)))
   }
-  const empresaId = usuarioLogado.value?.id_empresa || usuarioLogado.value?.empresas_ids?.[0]
-  return todosSetores.value.filter((s) => s.id_empresa === empresaId)
+  const empresasPermitidas = usuarioLogado.value?.empresas_ids?.length > 0
+    ? usuarioLogado.value.empresas_ids.map(Number)
+    : (usuarioLogado.value?.id_empresa ? [Number(usuarioLogado.value.id_empresa)] : [])
+  return todosSetores.value.filter((s) => empresasPermitidas.includes(Number(s.id_empresa)))
 })
 
 function gerarSenhaAleatoria() {
@@ -89,16 +91,17 @@ watch(
         empresasSelecionadas.value = usuario.Empresas?.map((e) => e.id_empresa) || (usuario.id_empresa ? [usuario.id_empresa] : [])
 
         // Setores atribuídos
-        setoresSelecionados.value = usuario.Setors?.map((s) => s.id_setor) || []
+        setoresSelecionados.value = usuario.Setors?.map((s) => s.id_setor) || usuario.setores?.map((s) => s.id_setor) || []
       } else {
         nome.value = ''
         login.value = ''
         cargo.value = ''
         status.value = 'ATIVO'
-        perfil.value = ehAdminGeral.value ? 'USUARIO' : 'USUARIO'
-        empresasSelecionadas.value = ehAdminGeral.value
-          ? (todasEmpresas.value[0] ? [todasEmpresas.value[0].id_empresa] : [])
-          : (usuarioLogado.value?.id_empresa ? [usuarioLogado.value.id_empresa] : [])
+        perfil.value = 'USUARIO'
+        const empresaPadrao = ehAdminGeral.value
+          ? (todasEmpresas.value[0]?.id_empresa || null)
+          : (usuarioLogado.value?.id_empresa || usuarioLogado.value?.empresas_ids?.[0] || null)
+        empresasSelecionadas.value = empresaPadrao ? [empresaPadrao] : []
         setoresSelecionados.value = []
         gerarSenhaAleatoria()
       }
@@ -127,19 +130,16 @@ async function aoSalvar() {
   erro.value = ''
 
   try {
+    const empId = empresasSelecionadas.value[0] || (usuarioLogado.value?.id_empresa || usuarioLogado.value?.empresas_ids?.[0])
     const payload = {
       nome: nome.value.trim(),
       login: login.value.trim(),
       cargo: cargo.value.trim() || 'Técnico de Segurança',
       status: status.value,
       perfil: perfil.value,
-      empresas_ids: empresasSelecionadas.value,
-      id_empresa: empresasSelecionadas.value[0] || null,
+      empresas_ids: empresasSelecionadas.value.length > 0 ? empresasSelecionadas.value : (empId ? [empId] : []),
+      id_empresa: empId || null,
       setores_ids: setoresSelecionados.value,
-    }
-
-    if (senha.value.trim()) {
-      payload.senha = senha.value.trim()
     }
 
     if (estaEditando.value) {
@@ -149,6 +149,7 @@ async function aoSalvar() {
       })
       emit('salvo', 'Usuário atualizado com sucesso!')
     } else {
+      payload.senha = senha.value.trim()
       await store.dispatch('usuario/criarUsuario', payload)
       emit('salvo', 'Usuário cadastrado com sucesso!')
     }
@@ -165,7 +166,7 @@ async function aoSalvar() {
 
 <template>
   <BaseModal :aberto="aberto" :titulo="tituloModal" @fechar="emit('fechar')">
-    <form class="flex flex-col gap-4 max-h-[75vh] overflow-y-auto pr-1" @submit.prevent="aoSalvar">
+    <form class="flex flex-col gap-4" @submit.prevent="aoSalvar">
       <BaseInput
         v-model="nome"
         label="Nome Completo *"
@@ -174,7 +175,7 @@ async function aoSalvar() {
 
       <BaseInput
         v-model="login"
-        label="Login / E-mail *"
+        label="Login / Identificação *"
         placeholder="Ex: carlos.santos"
         :disabled="estaEditando"
       />
@@ -185,10 +186,10 @@ async function aoSalvar() {
         placeholder="Ex: Técnico de Segurança do Trabalho"
       />
 
-      <!-- Campo de Senha -->
-      <div>
+      <!-- Campo de Senha (Apenas ao Cadastrar Novo Usuário) -->
+      <div v-if="!estaEditando">
         <label class="block text-caption font-medium text-text-2 mb-1.5">
-          {{ estaEditando ? 'Nova Senha (deixe em branco para manter a atual)' : 'Senha de Acesso *' }}
+          Senha de Acesso Inicial *
         </label>
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
@@ -220,6 +221,9 @@ async function aoSalvar() {
             </span>
           </BaseButton>
         </div>
+        <p class="text-[11px] text-text-3 mt-1">
+          A alteração posterior de senha deve ser feita pelo próprio usuário na tela de login.
+        </p>
       </div>
 
       <!-- Campos Exclusivos de ADMIN (Perfil e Empresas) -->

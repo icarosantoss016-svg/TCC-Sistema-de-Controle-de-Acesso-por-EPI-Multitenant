@@ -11,8 +11,15 @@ exports.criarSetor = async (req, res) => {
 
     let empresaIdFinal = id_empresa
 
-    if (usuarioLogado?.perfil === 'ADM_EMPRESA' || usuarioLogado?.perfil === 'USUARIO') {
-      empresaIdFinal = usuarioLogado.id_empresa || (usuarioLogado.empresas_ids && usuarioLogado.empresas_ids[0])
+    if (usuarioLogado?.perfil !== 'ADMIN') {
+      const empresasPermitidas = usuarioLogado.empresas_ids?.length > 0
+        ? usuarioLogado.empresas_ids.map(Number)
+        : (usuarioLogado.id_empresa ? [Number(usuarioLogado.id_empresa)] : [])
+
+      if (id_empresa && !empresasPermitidas.includes(Number(id_empresa))) {
+        return res.status(403).json({ error: 'Você não tem permissão para criar setores nesta empresa.' })
+      }
+      empresaIdFinal = id_empresa ? Number(id_empresa) : empresasPermitidas[0]
     }
 
     if (!empresaIdFinal || isNaN(empresaIdFinal)) {
@@ -54,8 +61,8 @@ exports.listarSetor = async (req, res) => {
 
     if (usuarioLogado?.perfil === 'ADM_EMPRESA') {
       const empresasIds = usuarioLogado.empresas_ids?.length > 0
-        ? usuarioLogado.empresas_ids
-        : [usuarioLogado.id_empresa]
+        ? usuarioLogado.empresas_ids.map(Number)
+        : (usuarioLogado.id_empresa ? [Number(usuarioLogado.id_empresa)] : [])
       filtro.id_empresa = empresasIds
     } else if (usuarioLogado?.perfil === 'USUARIO') {
       // Busca os IDs dos setores atribuídos
@@ -107,17 +114,28 @@ exports.atualizarSetor = async (req, res) => {
   try {
     const setor = await Setor.findByPk(req.params.id)
     const { nome_setor, id_empresa } = req.body
-
-    if (!nome_setor || nome_setor.trim() === '') {
-      return res.status(400).json({ error: 'Nome do setor é obrigatório.' })
-    }
+    const usuarioLogado = req.usuario
 
     if (!setor) {
       return res.status(404).json({ error: 'Setor não localizado.' })
     }
 
+    if (!nome_setor || nome_setor.trim() === '') {
+      return res.status(400).json({ error: 'Nome do setor é obrigatório.' })
+    }
+
+    if (usuarioLogado?.perfil !== 'ADMIN') {
+      const empresasPermitidas = usuarioLogado.empresas_ids?.length > 0
+        ? usuarioLogado.empresas_ids.map(Number)
+        : (usuarioLogado.id_empresa ? [Number(usuarioLogado.id_empresa)] : [])
+
+      if (!empresasPermitidas.includes(Number(setor.id_empresa))) {
+        return res.status(403).json({ error: 'Você não tem permissão para alterar setores desta empresa.' })
+      }
+    }
+
     const dados = { nome_setor: nome_setor.trim() }
-    if (id_empresa && req.usuario?.perfil === 'ADMIN') {
+    if (id_empresa && usuarioLogado?.perfil === 'ADMIN') {
       dados.id_empresa = id_empresa
     }
 
@@ -134,12 +152,26 @@ exports.deletarSetor = async (req, res) => {
   try {
     const { id } = req.params
     const setor = await Setor.findByPk(id)
+    const usuarioLogado = req.usuario
 
     if (!setor) {
       return res.status(404).json({ error: 'Setor não encontrado.' })
     }
 
+    if (usuarioLogado?.perfil !== 'ADMIN') {
+      const empresasPermitidas = usuarioLogado.empresas_ids?.length > 0
+        ? usuarioLogado.empresas_ids.map(Number)
+        : (usuarioLogado.id_empresa ? [Number(usuarioLogado.id_empresa)] : [])
+
+      if (!empresasPermitidas.includes(Number(setor.id_empresa))) {
+        return res.status(403).json({ error: 'Você não tem permissão para excluir setores desta empresa.' })
+      }
+    }
+
+    await RegraEpi.destroy({ where: { id_setor: id } })
+    await UsuarioSetor.destroy({ where: { id_setor: id } })
     await setor.destroy()
+
     res.status(200).json({ mensagem: 'Setor deletado com sucesso.' })
   } catch (erro) {
     console.error('Erro ao deletar setor:', erro)

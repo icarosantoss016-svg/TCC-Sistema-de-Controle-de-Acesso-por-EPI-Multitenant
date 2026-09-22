@@ -1,10 +1,21 @@
+const { Op } = require('sequelize')
 const { Usuario, Empresa, Setor, UsuarioSetor, UsuarioEmpresa } = require('../models')
 const bcrypt = require('bcrypt')
+
+function obterEmpresasDoUsuarioLogado(usuarioLogado) {
+  if (!usuarioLogado) return []
+  if (usuarioLogado.empresas_ids?.length > 0) {
+    return usuarioLogado.empresas_ids.map(Number)
+  }
+  return usuarioLogado.id_empresa ? [Number(usuarioLogado.id_empresa)] : []
+}
 
 exports.criarUsuario = async (req, res) => {
   try {
     const { login, senha, perfil, nome, cargo, status, id_empresa, empresas_ids, setores_ids } = req.body
     const usuarioLogado = req.usuario
+    const isAdmEmpresa = usuarioLogado?.perfil === 'ADM_EMPRESA'
+    const empresasDoGestor = obterEmpresasDoUsuarioLogado(usuarioLogado)
 
     if (!login || typeof login !== 'string' || !login.trim()) {
       return res.status(400).json({ error: 'Login/E-mail é obrigatório.' })
@@ -18,10 +29,12 @@ exports.criarUsuario = async (req, res) => {
     let empresaIdFinal = id_empresa
 
     // Regras de negócio por perfil de quem está criando:
-    if (usuarioLogado?.perfil === 'ADM_EMPRESA') {
-      // ADM_EMPRESA só pode criar sub-usuários do tipo USUARIO na sua própria empresa
+    if (isAdmEmpresa) {
       perfilFinal = 'USUARIO'
-      empresaIdFinal = usuarioLogado.id_empresa || (usuarioLogado.empresas_ids && usuarioLogado.empresas_ids[0])
+      empresaIdFinal = id_empresa || empresasDoGestor[0]
+      if (!empresasDoGestor.includes(Number(empresaIdFinal))) {
+        return res.status(403).json({ error: 'Você só pode criar usuários para sua própria empresa.' })
+      }
     }
 
     const perfisPermitidos = ['ADMIN', 'ADM_EMPRESA', 'USUARIO']
@@ -31,6 +44,36 @@ exports.criarUsuario = async (req, res) => {
 
     if (!empresaIdFinal && perfilFinal !== 'ADMIN') {
       return res.status(400).json({ error: 'ID da empresa é obrigatório para este perfil.' })
+    }
+
+    // Vincula a(s) empresa(s) na tabela N:N
+    let empresasParaVincular = Array.isArray(empresas_ids) && empresas_ids.length > 0
+      ? empresas_ids.map(Number)
+      : (empresaIdFinal ? [Number(empresaIdFinal)] : [])
+
+    if (isAdmEmpresa) {
+      const empresasInvalidas = empresasParaVincular.filter((id) => !empresasDoGestor.includes(id))
+      if (empresasInvalidas.length > 0) {
+        return res.status(403).json({ error: 'Você não tem permissão para vincular empresas que não gerencia.' })
+      }
+    }
+
+    // Validação de setores atribuídos
+    const setoresParaVincular = Array.isArray(setores_ids) && setores_ids.length > 0
+      ? setores_ids.map(Number)
+      : []
+
+    if (isAdmEmpresa && setoresParaVincular.length > 0) {
+      const setoresValidos = await Setor.findAll({
+        where: {
+          id_setor: setoresParaVincular,
+          id_empresa: empresasDoGestor,
+        },
+        attributes: ['id_setor'],
+      })
+      if (setoresValidos.length !== setoresParaVincular.length) {
+        return res.status(403).json({ error: 'Você só pode atribuir setores pertencentes à sua empresa.' })
+      }
     }
 
     const salt = await bcrypt.genSalt(10)
@@ -46,18 +89,22 @@ exports.criarUsuario = async (req, res) => {
       id_empresa: empresaIdFinal || null,
     })
 
-    // Vincula a(s) empresa(s) na tabela N:N
-    const empresasParaVincular = Array.isArray(empresas_ids) && empresas_ids.length > 0
-      ? empresas_ids
-      : (empresaIdFinal ? [empresaIdFinal] : [])
-
     if (empresasParaVincular.length > 0) {
-      await novoUsuario.setEmpresas(empresasParaVincular)
+      await UsuarioEmpresa.bulkCreate(
+        empresasParaVincular.map((empId) => ({
+          id_usuario: novoUsuario.id_usuario,
+          id_empresa: Number(empId),
+        }))
+      )
     }
 
-    // Vincula os setores atribuídos na tabela N:N
-    if (Array.isArray(setores_ids) && setores_ids.length > 0) {
-      await novoUsuario.setSetors(setores_ids)
+    if (setoresParaVincular.length > 0) {
+      await UsuarioSetor.bulkCreate(
+        setoresParaVincular.map((setorId) => ({
+          id_usuario: novoUsuario.id_usuario,
+          id_setor: Number(setorId),
+        }))
+      )
     }
 
     return res.status(201).json({
@@ -77,27 +124,64 @@ exports.criarUsuario = async (req, res) => {
 exports.listarUsuarios = async (req, res) => {
   try {
     const usuarioLogado = req.usuario
-    const filtro = {}
+    const isAdmEmpresa = usuarioLogado?.perfil === 'ADM_EMPRESA'
+    const empresasDoGestor = obterEmpresasDoUsuarioLogado(usuarioLogado)
 
-    // Escopo de dados por perfil:
-    if (usuarioLogado?.perfil === 'ADM_EMPRESA') {
-      const empresasDoUsuario = usuarioLogado.empresas_ids?.length > 0
-        ? usuarioLogado.empresas_ids
-        : [usuarioLogado.id_empresa]
-      filtro.id_empresa = empresasDoUsuario
+    const filtro = {}
+    if (isAdmEmpresa) {
+      filtro.perfil = { [Op.ne]: 'ADMIN' }
     }
 
     const usuarios = await Usuario.findAll({
       where: filtro,
       attributes: { exclude: ['senha'] },
-      include: [
-        { model: Empresa, through: { attributes: [] }, attributes: ['id_empresa', 'nome', 'cnpj'] },
-        { model: Setor, through: { attributes: [] }, attributes: ['id_setor', 'nome_setor'] },
-      ],
       order: [['id_usuario', 'DESC']],
     })
 
-    return res.status(200).json(usuarios)
+    const usuariosCompletos = await Promise.all(
+      usuarios.map(async (u) => {
+        const uJson = u.toJSON()
+
+        // Empresas
+        const vinculosEmpresa = await UsuarioEmpresa.findAll({
+          where: { id_usuario: u.id_usuario },
+          attributes: ['id_empresa'],
+        })
+        const empIds = vinculosEmpresa.map((v) => Number(v.id_empresa))
+        if (u.id_empresa && !empIds.includes(Number(u.id_empresa))) {
+          empIds.push(Number(u.id_empresa))
+        }
+        const empresas = empIds.length > 0
+          ? await Empresa.findAll({ where: { id_empresa: empIds }, attributes: ['id_empresa', 'nome', 'cnpj'] })
+          : []
+
+        // Setores
+        const vinculosSetor = await UsuarioSetor.findAll({
+          where: { id_usuario: u.id_usuario },
+          attributes: ['id_setor'],
+        })
+        const setorIds = vinculosSetor.map((v) => Number(v.id_setor))
+        const setores = setorIds.length > 0
+          ? await Setor.findAll({ where: { id_setor: setorIds }, attributes: ['id_setor', 'nome_setor', 'id_empresa'] })
+          : []
+
+        uJson.Empresas = empresas
+        uJson.Setors = setores
+        uJson.setores = setores
+        return uJson
+      })
+    )
+
+    // Se for ADM_EMPRESA, filtra apenas usuários pertencentes a pelo menos uma das empresas do gestor
+    const resultado = isAdmEmpresa
+      ? usuariosCompletos.filter((u) => {
+          const userEmpIds = u.Empresas.map((e) => Number(e.id_empresa))
+          if (u.id_empresa) userEmpIds.push(Number(u.id_empresa))
+          return userEmpIds.some((id) => empresasDoGestor.includes(id))
+        })
+      : usuariosCompletos
+
+    return res.status(200).json(resultado)
   } catch (error) {
     console.error('Erro ao listar usuários:', error)
     return res.status(500).json({ error: 'Erro interno ao listar usuários.' })
@@ -106,19 +190,57 @@ exports.listarUsuarios = async (req, res) => {
 
 exports.buscarUsuarioId = async (req, res) => {
   try {
+    const usuarioLogado = req.usuario
+    const isAdmEmpresa = usuarioLogado?.perfil === 'ADM_EMPRESA'
+    const empresasDoGestor = obterEmpresasDoUsuarioLogado(usuarioLogado)
+
     const usuario = await Usuario.findByPk(req.params.id, {
       attributes: { exclude: ['senha'] },
-      include: [
-        { model: Empresa, through: { attributes: [] } },
-        { model: Setor, through: { attributes: [] } },
-      ],
     })
 
     if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado.' })
     }
 
-    return res.status(200).json(usuario)
+    if (isAdmEmpresa && usuario.perfil === 'ADMIN') {
+      return res.status(403).json({ error: 'Acesso não autorizado a este usuário.' })
+    }
+
+    const uJson = usuario.toJSON()
+
+    // Empresas
+    const vinculosEmpresa = await UsuarioEmpresa.findAll({
+      where: { id_usuario: usuario.id_usuario },
+      attributes: ['id_empresa'],
+    })
+    const empIds = vinculosEmpresa.map((v) => Number(v.id_empresa))
+    if (usuario.id_empresa && !empIds.includes(Number(usuario.id_empresa))) {
+      empIds.push(Number(usuario.id_empresa))
+    }
+
+    if (isAdmEmpresa && !empIds.some((id) => empresasDoGestor.includes(id))) {
+      return res.status(403).json({ error: 'Acesso não autorizado a usuários de outras empresas.' })
+    }
+
+    const empresas = empIds.length > 0
+      ? await Empresa.findAll({ where: { id_empresa: empIds }, attributes: ['id_empresa', 'nome', 'cnpj'] })
+      : []
+
+    // Setores
+    const vinculosSetor = await UsuarioSetor.findAll({
+      where: { id_usuario: usuario.id_usuario },
+      attributes: ['id_setor'],
+    })
+    const setorIds = vinculosSetor.map((v) => Number(v.id_setor))
+    const setores = setorIds.length > 0
+      ? await Setor.findAll({ where: { id_setor: setorIds }, attributes: ['id_setor', 'nome_setor', 'id_empresa'] })
+      : []
+
+    uJson.Empresas = empresas
+    uJson.Setors = setores
+    uJson.setores = setores
+
+    return res.status(200).json(uJson)
   } catch (error) {
     console.error('Erro ao buscar o usuário:', error)
     return res.status(500).json({ error: 'Erro interno ao buscar usuário.' })
@@ -127,45 +249,122 @@ exports.buscarUsuarioId = async (req, res) => {
 
 exports.atualizarUsuario = async (req, res) => {
   try {
-    const usuario = await Usuario.findByPk(req.params.id)
+    const usuarioLogado = req.usuario
+    const isAdmEmpresa = usuarioLogado?.perfil === 'ADM_EMPRESA'
+    const empresasDoGestor = obterEmpresasDoUsuarioLogado(usuarioLogado)
 
+    const usuario = await Usuario.findByPk(req.params.id)
     if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado.' })
     }
 
-    const { nome, cargo, status, perfil, id_empresa, empresas_ids, setores_ids, senha } = req.body
+    if (isAdmEmpresa) {
+      if (usuario.perfil === 'ADMIN') {
+        return res.status(403).json({ error: 'Você não tem permissão para alterar administradores.' })
+      }
+
+      const vinculosExistentes = await UsuarioEmpresa.findAll({
+        where: { id_usuario: usuario.id_usuario },
+        attributes: ['id_empresa'],
+      })
+      const empIdsExistentes = vinculosExistentes.map((v) => Number(v.id_empresa))
+      if (usuario.id_empresa) empIdsExistentes.push(Number(usuario.id_empresa))
+
+      if (!empIdsExistentes.some((id) => empresasDoGestor.includes(id))) {
+        return res.status(403).json({ error: 'Você não tem permissão para editar usuários de outras empresas.' })
+      }
+    }
+
+    const { nome, cargo, status, perfil, id_empresa, empresas_ids, setores_ids } = req.body
     const dadosAtualizacao = {}
 
     if (nome !== undefined) dadosAtualizacao.nome = nome.trim()
     if (cargo !== undefined) dadosAtualizacao.cargo = cargo.trim()
     if (status !== undefined) dadosAtualizacao.status = status
-    if (perfil !== undefined && req.usuario?.perfil === 'ADMIN') dadosAtualizacao.perfil = perfil
-    if (id_empresa !== undefined) dadosAtualizacao.id_empresa = id_empresa
+    if (perfil !== undefined && usuarioLogado?.perfil === 'ADMIN') {
+      dadosAtualizacao.perfil = perfil
+    }
 
-    if (senha && typeof senha === 'string' && senha.trim().length >= 4) {
-      const salt = await bcrypt.genSalt(10)
-      dadosAtualizacao.senha = await bcrypt.hash(senha, salt)
+    if (id_empresa !== undefined) {
+      if (isAdmEmpresa && !empresasDoGestor.includes(Number(id_empresa))) {
+        return res.status(403).json({ error: 'Você só pode atribuir sua própria empresa.' })
+      }
+      dadosAtualizacao.id_empresa = id_empresa
     }
 
     await usuario.update(dadosAtualizacao)
 
     // Atualiza vínculos de empresas
-    if (empresas_ids && Array.isArray(empresas_ids)) {
-      await usuario.setEmpresas(empresas_ids)
+    if (empresas_ids !== undefined && Array.isArray(empresas_ids)) {
+      const empIdsNumeros = empresas_ids.map(Number)
+      if (isAdmEmpresa) {
+        const invalidas = empIdsNumeros.filter((id) => !empresasDoGestor.includes(id))
+        if (invalidas.length > 0) {
+          return res.status(403).json({ error: 'Você não pode atribuir empresas que não gerencia.' })
+        }
+      }
+
+      await UsuarioEmpresa.destroy({ where: { id_usuario: usuario.id_usuario } })
+      if (empIdsNumeros.length > 0) {
+        await UsuarioEmpresa.bulkCreate(
+          empIdsNumeros.map((empId) => ({
+            id_usuario: usuario.id_usuario,
+            id_empresa: empId,
+          }))
+        )
+      }
     }
 
     // Atualiza vínculos de setores
-    if (setores_ids && Array.isArray(setores_ids)) {
-      await usuario.setSetors(setores_ids)
+    if (setores_ids !== undefined && Array.isArray(setores_ids)) {
+      const setorIdsNumeros = setores_ids.map(Number)
+      if (isAdmEmpresa && setorIdsNumeros.length > 0) {
+        const setoresValidos = await Setor.findAll({
+          where: {
+            id_setor: setorIdsNumeros,
+            id_empresa: empresasDoGestor,
+          },
+          attributes: ['id_setor'],
+        })
+        if (setoresValidos.length !== setorIdsNumeros.length) {
+          return res.status(403).json({ error: 'Você só pode atribuir setores pertencentes à sua empresa.' })
+        }
+      }
+
+      await UsuarioSetor.destroy({ where: { id_usuario: usuario.id_usuario } })
+      if (setorIdsNumeros.length > 0) {
+        await UsuarioSetor.bulkCreate(
+          setorIdsNumeros.map((setorId) => ({
+            id_usuario: usuario.id_usuario,
+            id_setor: setorId,
+          }))
+        )
+      }
     }
 
-    const usuarioAtualizado = await Usuario.findByPk(usuario.id_usuario, {
-      attributes: { exclude: ['senha'] },
-      include: [
-        { model: Empresa, through: { attributes: [] } },
-        { model: Setor, through: { attributes: [] } },
-      ],
+    const vinculosEmpresa = await UsuarioEmpresa.findAll({
+      where: { id_usuario: usuario.id_usuario },
+      attributes: ['id_empresa'],
     })
+    const empIds = vinculosEmpresa.map((v) => Number(v.id_empresa))
+    const empresas = empIds.length > 0
+      ? await Empresa.findAll({ where: { id_empresa: empIds }, attributes: ['id_empresa', 'nome', 'cnpj'] })
+      : []
+
+    const vinculosSetor = await UsuarioSetor.findAll({
+      where: { id_usuario: usuario.id_usuario },
+      attributes: ['id_setor'],
+    })
+    const setorIds = vinculosSetor.map((v) => Number(v.id_setor))
+    const setores = setorIds.length > 0
+      ? await Setor.findAll({ where: { id_setor: setorIds }, attributes: ['id_setor', 'nome_setor', 'id_empresa'] })
+      : []
+
+    const usuarioAtualizado = usuario.toJSON()
+    delete usuarioAtualizado.senha
+    usuarioAtualizado.Empresas = empresas
+    usuarioAtualizado.Setors = setores
+    usuarioAtualizado.setores = setores
 
     return res.status(200).json({
       mensagem: 'Usuário atualizado com sucesso.',
@@ -191,7 +390,7 @@ exports.atualizarSenha = async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10)
-    const senhaCriptografada = await bcrypt.hash(senha, salt)
+    const senhaCriptografada = await bcrypt.hash(senha.trim(), salt)
 
     await usuario.update({ senha: senhaCriptografada })
 
@@ -204,13 +403,35 @@ exports.atualizarSenha = async (req, res) => {
 
 exports.deletarUsuario = async (req, res) => {
   try {
-    const linhasDeletadas = await Usuario.destroy({
-      where: { id_usuario: req.params.id },
-    })
+    const usuarioLogado = req.usuario
+    const isAdmEmpresa = usuarioLogado?.perfil === 'ADM_EMPRESA'
+    const empresasDoGestor = obterEmpresasDoUsuarioLogado(usuarioLogado)
 
-    if (linhasDeletadas === 0) {
+    const usuario = await Usuario.findByPk(req.params.id)
+    if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado.' })
     }
+
+    if (isAdmEmpresa) {
+      if (usuario.perfil === 'ADMIN') {
+        return res.status(403).json({ error: 'Você não pode excluir um administrador.' })
+      }
+
+      const vinculosExistentes = await UsuarioEmpresa.findAll({
+        where: { id_usuario: usuario.id_usuario },
+        attributes: ['id_empresa'],
+      })
+      const empIdsExistentes = vinculosExistentes.map((v) => Number(v.id_empresa))
+      if (usuario.id_empresa) empIdsExistentes.push(Number(usuario.id_empresa))
+
+      if (!empIdsExistentes.some((id) => empresasDoGestor.includes(id))) {
+        return res.status(403).json({ error: 'Você não tem permissão para excluir usuários de outras empresas.' })
+      }
+    }
+
+    await UsuarioEmpresa.destroy({ where: { id_usuario: usuario.id_usuario } })
+    await UsuarioSetor.destroy({ where: { id_usuario: usuario.id_usuario } })
+    await usuario.destroy()
 
     return res.status(200).json({ mensagem: 'Usuário deletado com sucesso.' })
   } catch (error) {

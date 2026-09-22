@@ -18,8 +18,7 @@ const store = useStore()
 
 const menuAberto = ref(false)
 
-// Lista mestre de itens de navegação com restrição por perfil
-const todosItensMenu = [
+const exAdminItensMenu = [
   {
     titulo: 'Empresas',
     subtitulo: 'Parceiras e clientes',
@@ -27,6 +26,17 @@ const todosItensMenu = [
     icone: Building2,
     perfis: ['ADMIN'],
   },
+  {
+    titulo: 'Solicitações',
+    subtitulo: 'Revisão de acessos',
+    rota: '/solicitacoes-acesso',
+    icone: UserCheck,
+    perfis: ['ADMIN'],
+  }
+]
+
+// Lista mestre de itens de navegação com restrição por perfil
+const todosItensMenu = [
   {
     titulo: 'Setores',
     subtitulo: 'Monitoramento câmeras',
@@ -40,13 +50,6 @@ const todosItensMenu = [
     rota: '/usuarios',
     icone: IdCard,
     perfis: ['ADMIN', 'ADM_EMPRESA'],
-  },
-  {
-    titulo: 'Solicitações',
-    subtitulo: 'Revisão de acessos',
-    rota: '/solicitacoes-acesso',
-    icone: UserCheck,
-    perfis: ['ADMIN'],
   },
   {
     titulo: 'Dashboard',
@@ -126,14 +129,64 @@ async function aoSair() {
         </div>
       </div>
 
-      <!-- Seção de Navegação -->
+      <!-- Seção de Navegação: Somente ADMIN -->
+      <template v-if="usuarioAutenticado.perfil === 'ADMIN'">
+        <div class="px-3 pt-6 pb-2">
+          <span class="px-3 text-[11px] font-semibold text-text-3 uppercase tracking-wider">
+            GERENCIAMENTO ADMIN
+          </span>
+        </div>
+        
+        <!-- Lista somente admin -->
+        <nav class="px-3 space-y-1">
+          <router-link
+            v-for="item in exAdminItensMenu"
+            :key="item.rota"
+            :to="item.rota"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-md transition-colors group"
+            :class="[
+              isItemAtivo(item.rota)
+                ? 'bg-accent/12 text-accent border-l-4 border-accent pl-2.5 font-medium'
+                : 'text-text-1 hover:bg-bg-2 border-l-4 border-transparent pl-2.5',
+            ]"
+          >
+            <!-- Ícone do item -->
+            <component
+              :is="item.icone"
+              class="w-5 h-5 shrink-0 transition-colors"
+              :class="[
+                isItemAtivo(item.rota) ? 'text-accent' : 'text-text-2 group-hover:text-text-1',
+              ]"
+            />
+
+            <!-- Textos do item: Título e Subtítulo -->
+            <div class="flex flex-col min-w-0">
+              <span
+                class="text-body leading-tight truncate font-medium"
+                :class="[
+                  isItemAtivo(item.rota) ? 'text-accent' : 'text-text-0 group-hover:text-text-0',
+                ]"
+              >
+                {{ item.titulo }}
+              </span>
+              <span
+                class="text-caption leading-tight truncate mt-0.5"
+                :class="[isItemAtivo(item.rota) ? 'text-accent/80' : 'text-text-2']"
+              >
+                {{ item.subtitulo }}
+              </span>
+            </div>
+          </router-link>
+        </nav>
+      </template>
+
       <div class="px-3 pt-6 pb-2">
         <span class="px-3 text-[11px] font-semibold text-text-3 uppercase tracking-wider">
           SISTEMA DE CONTROLE
         </span>
       </div>
 
-      <!-- Lista de Itens do Menu -->
+      <!-- Lista de Itens do Menu TODOS OS USUÁRIOS -->
       <nav class="px-3 space-y-1">
         <router-link
           v-for="item in itensMenuVisiveis"

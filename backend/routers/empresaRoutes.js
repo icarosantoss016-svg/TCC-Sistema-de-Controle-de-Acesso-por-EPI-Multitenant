@@ -14,7 +14,7 @@ router.get(
 router.get(
   '/api/listaEmpresa',
   authMiddleware,
-  authorizarPerfil('ADMIN', 'ADM_EMPRESA'),
+  authorizarPerfil('ADMIN', 'ADM_EMPRESA', 'USUARIO'),
   empresaController.listarEmpresas,
 )
 

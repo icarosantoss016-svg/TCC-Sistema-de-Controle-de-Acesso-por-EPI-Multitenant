@@ -33,16 +33,27 @@ exports.criarEmpresa= async(req,res)=>{
     }
 }
 
-exports.listarEmpresas = async(req,res)=>{
-    try {
-        const empresas = await Empresa.findAll()
+exports.listarEmpresas = async (req, res) => {
+  try {
+    const usuarioLogado = req.usuario
+    const filtro = {}
 
-        return res.status(200).json(empresas)
-    } catch (error) {
-        console.error('Erro ao listar empresas', error)
-        return res. status(500).json({error:'Erro interno ao listar empresas.'})
-        
+    if (usuarioLogado && usuarioLogado.perfil !== 'ADMIN') {
+      const empresasIds = usuarioLogado.empresas_ids?.length > 0
+        ? usuarioLogado.empresas_ids.map(Number)
+        : (usuarioLogado.id_empresa ? [Number(usuarioLogado.id_empresa)] : [])
+      filtro.id_empresa = empresasIds
     }
+
+    const empresas = await Empresa.findAll({
+      where: Object.keys(filtro).length > 0 ? filtro : undefined,
+    })
+
+    return res.status(200).json(empresas)
+  } catch (error) {
+    console.error('Erro ao listar empresas', error)
+    return res.status(500).json({ error: 'Erro interno ao listar empresas.' })
+  }
 }
 
 exports.buscarEmpresasId = async (req,res) =>{
