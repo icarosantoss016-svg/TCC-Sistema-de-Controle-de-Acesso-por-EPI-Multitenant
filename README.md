@@ -2,7 +2,7 @@
 
 > Trabalho de Conclusão de Curso, Desenvolvimento de Sistemas, SENAI Bahia.
 
-Sistema de controle de acesso a setores industriais/laboratoriais com base na detecção automática de Equipamentos de Proteção Individual (EPI), usando visão computacional (YOLO). O projeto é **multitenant**: cada empresa cliente define seu próprio ramo de atuação, seus próprios setores e quais EPIs são obrigatórios em cada um, permitindo que, por exemplo, uma indústria exija capacete e luvas, enquanto um laboratório exija máscara e touca, tudo na mesma plataforma.
+Sistema de controle de acesso a setores industriais e laboratoriais com base na detecção automática de Equipamentos de Proteção Individual (EPI), usando visão computacional (YOLO). O projeto é **multitenant**: cada empresa cliente define seu próprio ramo de atuação, seus próprios setores e quais EPIs são obrigatórios em cada um, permitindo que, por exemplo, uma indústria exija capacete e luvas, enquanto um laboratório exija máscara e touca, tudo na mesma plataforma.
 
 ## Como funciona
 
@@ -10,26 +10,27 @@ Sistema de controle de acesso a setores industriais/laboratoriais com base na de
 2. Um modelo YOLO treinado (`best.pt`) identifica quais EPIs estão presentes na imagem.
 3. O resultado é enviado para a API, que compara os itens detectados com as regras de EPI cadastradas para aquele setor.
 4. O acesso é registrado como **PERMITIDO** ou **NEGADO**, com o log de quais itens foram esquecidos.
-5. Relatórios agregados (ranking de EPIs mais esquecidos, setores com mais infrações, relatórios por período) ficam disponíveis via API para consulta administrativa.
+5. O painel administrativo exibe em tempo real o histórico de acessos, a taxa de conformidade e os rankings de infrações por setor e por tipo de EPI.
 
 ## Arquitetura
 
 ```
-┌──────────────────┐      POST /api/acesso      ┌──────────────────┐
-│  camera/          │ ─────────────────────────► │                  │
-│  reconhecimento.py│   {id_setor, id_empresa,   │   API (Node.js)  │
-│  YOLO + OpenCV     │    itens_detectados}       │   Express +      │
-└──────────────────┘                             │   Sequelize      │
-                                                  │                  │
-┌──────────────────┐      login + provisiona     │                  │
-│ camera/            │ ─────────────────────────► │                  │
-│ instaladorCamera.py│   empresa/setor via CNPJ   └────────┬─────────┘
-└──────────────────┘                                       │
-                                                            ▼
-                                                     ┌──────────────┐
-                                                     │   SQLite     │
-                                                     │  (dev/local) │
-                                                     └──────────────┘
+┌──────────────────┐      POST /api/acesso      ┌──────────────────┐      REST API / JWT     ┌──────────────────┐
+│  camera/         │ ─────────────────────────► │                  │ ◄────────────────────── │  frontend/       │
+│  reconhecimento. │   {id_setor, id_empresa,   │   API (Node.js)  │                         │  Vue 3 + Vite    │
+│  py              │    itens_detectados}       │   Express +      │                         │  Tailwind + Vuex │
+│  YOLO + OpenCV   │                            │   Sequelize      │                         └──────────────────┘
+└──────────────────┘                            │                  │
+                                                │                  │
+┌──────────────────┐     login + provisiona     │                  │
+│ camera/          │ ─────────────────────────► │                  │
+│ instaladorCamera.│   empresa/setor via CNPJ   └────────┬─────────┘
+│ py               │                                     │
+└──────────────────┘                                     ▼
+                                                  ┌──────────────┐
+                                                  │   SQLite     │
+                                                  │  (dev/local) │
+                                                  └──────────────┘
 ```
 
 ## Tecnologias
@@ -39,6 +40,16 @@ Sistema de controle de acesso a setores industriais/laboratoriais com base na de
 - Sequelize (ORM) + SQLite
 - JWT (`jsonwebtoken`) para autenticação
 - `bcrypt` para hash de senha
+- CORS para integração com o frontend
+
+**Frontend**
+- Vue 3 (Composition API)
+- Vite
+- Vue Router (com navigation guards para controle RBAC)
+- Vuex (gerenciamento centralizado de estado)
+- Axios (com interceptors para injeção de token e tratamento de sessão)
+- Tailwind CSS
+- Lucide Icons (`lucide-vue-next`)
 
 **Detecção (câmeras)**
 - Python
@@ -52,20 +63,28 @@ Sistema de controle de acesso a setores industriais/laboratoriais com base na de
 ├── backend/
 │   ├── config/
 │   │   └── database.js          # conexão Sequelize com o SQLite
-│   ├── models/                  # Empresa, Setor, Usuario, RegraEpi, LogAcesso
-│   │   └── index.js              # associações entre os models
-│   ├── controllers/              # regras de negócio de cada entidade
-│   ├── routers/                  # definição das rotas da API
-│   ├── middleware/
-│   │   └── authMiddleware.js     # validação de token JWT
-│   ├── views/                    # telas EJS (login, dashboard, setores)
+│   ├── models/                  # Empresa, Setor, Usuario, RegraEpi, LogAcesso, etc.
+│   │   └── index.js             # associações entre os models
+│   ├── controllers/             # regras de negócio de cada entidade
+│   ├── routers/                 # definição das rotas da API
+│   ├── middleware/              # autenticação JWT e autorização RBAC
 │   ├── package.json
-│   └── server.js                 # ponto de entrada da aplicação
+│   └── server.js                # ponto de entrada da API
 ├── camera/
-│   ├── reconhecimento.py         # script que roda na câmera (loop de detecção)
-│   ├── instaladorCamera.py       # script de provisionamento (roda uma vez por câmera nova)
-│   └── best.pt                   # modelo YOLO treinado (capacete, colete, luva)
-├── frontend/                     # em construção
+│   ├── reconhecimento.py        # script que roda na câmera (loop de detecção)
+│   ├── instaladorCamera.py      # script de provisionamento de novos setores
+│   ├── best.pt                  # modelo YOLO treinado (capacete, colete, luva)
+│   ├── requirements.txt         # dependências Python do módulo
+│   └── package.json             # automação de instalação via npm
+├── frontend/
+│   ├── src/
+│   │   ├── components/          # componentes modulares (ui, layout, modais)
+│   │   ├── views/               # telas (Dashboard, Empresas, Setores, Usuários, etc.)
+│   │   ├── router/              # rotas e proteção por perfil de acesso
+│   │   ├── store/               # módulos do Vuex (auth, relatorios, setores, etc.)
+│   │   └── service/             # cliente Axios configurado
+│   ├── package.json
+│   └── vite.config.js           # configuração do Vite
 ├── .gitignore
 └── README.md
 ```
@@ -73,14 +92,17 @@ Sistema de controle de acesso a setores industriais/laboratoriais com base na de
 ## Modelo de dados (resumo)
 
 - **Empresa**: `nome`, `cnpj`, `ramo`
-- **Setor**: pertence a uma Empresa, agrupa as câmeras/áreas de acesso
+- **Setor**: pertence a uma Empresa, agrupa os postos de monitoramento
 - **RegraEpi**: define, por setor, quais EPIs são obrigatórios (`nome_Epi`, nome técnico usado na comparação com a detecção, e `nome_exibicao`, nome amigável para relatórios)
-- **Usuario**: possui `perfil` (`ADMIN`, `ADM_EMPRESA`, `USUARIO`) e pertence a uma Empresa
+- **Usuario**: possui `nome`, `cargo`, `login`, `senha`, `status` (`ATIVO`/`INATIVO`), `perfil` (`ADMIN`, `ADM_EMPRESA`, `USUARIO`) e vínculo com Empresa
+- **UsuarioSetor**: tabela de associação N:N entre usuários técnicos e os setores autorizados
+- **UsuarioEmpresa**: tabela de associação N:N entre gestores e empresas autorizadas
+- **SolicitacaoAcesso**: registro de pedidos de cadastro externo para moderação do administrador
 - **LogAcesso**: histórico de cada verificação de acesso, com status (`PERMITIDO`/`NEGADO`) e itens esquecidos
 
 ## Como rodar
 
-### Backend
+### 1. Backend
 
 ```bash
 cd backend
@@ -88,33 +110,52 @@ npm install
 node server.js
 ```
 
-O servidor sobe em `http://localhost:3000` e sincroniza automaticamente o banco SQLite na primeira execução, criando uma empresa e um usuário administrador padrão.
+O servidor sobe em `http://localhost:3000` e sincroniza automaticamente o banco SQLite na primeira execução, criando uma empresa e um usuário administrador padrão (`admin` / `admin123`).
 
-### Provisionar uma câmera nova
+### 2. Frontend
+
+Em outro terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+A aplicação web estará disponível no endereço indicado pelo Vite (normalmente `http://localhost:5173`).
+
+### 3. Provisionar uma câmera nova
+
+No terminal do módulo de câmera:
 
 ```bash
 cd camera
-python instaladorCamera.py
+npm install
+npm run provisionar
 ```
 
-Solicita login de administrador, o CNPJ da empresa cliente e o nome do novo setor, e devolve (ou já inicia) o comando para ligar a câmera daquele setor. É necessário rodar a partir da pasta `camera/`, já que o script carrega o modelo YOLO (`best.pt`) por um caminho relativo.
+*(Ou utilize diretamente `pip install -r requirements.txt` e `python instaladorCamera.py`)*
 
-### Rodar o reconhecimento numa câmera já provisionada
+O assistente solicita login de administrador, o CNPJ da empresa cliente e o nome do novo setor, registrando o posto na API e fornecendo o comando para iniciar a captura.
+
+### 4. Rodar o reconhecimento numa câmera provisionada
 
 ```bash
 cd camera
 python reconhecimento.py --setor <id_setor> --empresa <id_empresa>
 ```
 
+Pressione `s` no terminal para capturar o frame da câmera e processar o acesso ou `n` para encerrar.
+
 ## Endpoints da API
 
-Todas as rotas abaixo, exceto `/login` e `/api/acesso`, exigem o cabeçalho `Authorization: Bearer <token>`.
+Todas as rotas abaixo, exceto `/login`, `/api/acesso` e solicitações públicas, exigem o cabeçalho `Authorization: Bearer <token>`.
 
 ### Autenticação e acesso
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/login` | Autenticação, retorna token JWT |
+| POST | `/login` | Autenticação, retorna token JWT e dados do usuário |
 | POST | `/api/acesso` | Recebe detecção da câmera e verifica o acesso |
 
 ### Empresas
@@ -133,9 +174,9 @@ Todas as rotas abaixo, exceto `/login` e `/api/acesso`, exigem o cabeçalho `Aut
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/api/criarSetor` | Cadastra um setor vinculado a uma empresa |
-| GET | `/api/listarSetor` | Lista todos os setores |
+| GET | `/api/listarSetor` | Lista setores respeitando o escopo do usuário |
 | GET | `/api/buscarSetor/:id` | Busca um setor pelo ID |
-| PUT | `/api/atualizarSetor/:id` | Atualiza o nome de um setor |
+| PUT | `/api/atualizarSetor/:id` | Atualiza os dados de um setor |
 | DELETE | `/api/deletarSetor/:id` | Remove um setor |
 
 ### Regras de EPI
@@ -153,16 +194,26 @@ Todas as rotas abaixo, exceto `/login` e `/api/acesso`, exigem o cabeçalho `Aut
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/api/criarusuario` | Cadastra um usuário |
-| GET | `/api/listaUsuario` | Lista todos os usuários |
+| GET | `/api/listaUsuario` | Lista usuários respeitando o escopo da empresa |
 | GET | `/api/buscarUsuario/:id` | Busca um usuário pelo ID |
+| PUT | `/api/atualizarUsuario/:id` | Atualiza os dados cadastrais de um usuário |
 | PUT | `/api/atualizarSenha/:id` | Atualiza a senha de um usuário |
 | DELETE | `/api/deletarUsuario/:id` | Remove um usuário |
 
-### Relatórios
+### Relatórios e Dashboard
 
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/relatorios/geral` | Logs de acesso (aceita `?status=PERMITIDO` ou `?status=NEGADO`) |
-| GET | `/api/relatorios/ranking-epis` | EPIs mais esquecidos |
-| GET | `/api/relatorios/ranking-setores` | Setores com mais infrações |
-| GET | `/api/relatorios/ciclo` | Relatório por período (`?inicio=&fim=`), com ranking de EPIs e setores no intervalo |
+| GET | `/api/relatorios/geral` | Logs de acesso com filtros de status e setor |
+| GET | `/api/relatorios/ranking-epis` | Ranking dos EPIs mais esquecidos |
+| GET | `/api/relatorios/ranking-setores` | Ranking dos setores com mais infrações |
+| GET | `/api/relatorios/ciclo` | Relatório consolidado por período |
+
+### Solicitações de Acesso
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/solicitacoes` | Envia solicitação de acesso pública |
+| GET | `/api/solicitacoes` | Lista solicitações para moderação do administrador |
+| PUT | `/api/solicitacoes/:id/aprovar` | Aprova solicitação e cria o usuário no sistema |
+| PUT | `/api/solicitacoes/:id/negar` | Rejeita uma solicitação de acesso |
