@@ -19,7 +19,17 @@ const store = useStore()
 const estaEditando = computed(() => !!props.setorParaEditar)
 const tituloModal = computed(() => (estaEditando.value ? 'Editar setor' : 'Cadastrar novo setor'))
 
-const empresas = computed(() => store.getters['empresa/todasEmpresas'] || [])
+const usuarioLogado = computed(() => store.state.auth?.usuario)
+const ehAdminGeral = computed(() => usuarioLogado.value?.perfil === 'ADMIN')
+
+const empresas = computed(() => {
+  const todas = store.getters['empresa/todasEmpresas'] || []
+  if (ehAdminGeral.value) return todas
+  const permitidas = usuarioLogado.value?.empresas_ids?.length > 0
+    ? usuarioLogado.value.empresas_ids.map(Number)
+    : (usuarioLogado.value?.id_empresa ? [Number(usuarioLogado.value.id_empresa)] : [])
+  return todas.filter((e) => permitidas.includes(Number(e.id_empresa)))
+})
 
 const nomeSetor = ref('')
 const idEmpresa = ref('')
@@ -27,14 +37,14 @@ const carregando = ref(false)
 const erro = ref('')
 
 watch(
-  () => props.setorParaEditar,
-  (novoSetor) => {
+  () => [props.setorParaEditar, empresas.value],
+  ([novoSetor, listaEmpresas]) => {
     if (novoSetor) {
       nomeSetor.value = novoSetor.nome_setor || novoSetor.nome || ''
       idEmpresa.value = novoSetor.id_empresa || ''
     } else {
       nomeSetor.value = ''
-      idEmpresa.value = empresas.value.length > 0 ? empresas.value[0].id_empresa : ''
+      idEmpresa.value = listaEmpresas.length > 0 ? listaEmpresas[0].id_empresa : ''
     }
     erro.value = ''
   },

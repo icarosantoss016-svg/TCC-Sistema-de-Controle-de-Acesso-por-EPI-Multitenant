@@ -5,6 +5,7 @@ import regraEpi from './modules/regraEpiModule'
 import relatorio from './modules/relatorioModule'
 import setor from './modules/setorModule'
 import usuario from './modules/usuarioModule'
+import solicitacao from './modules/solicitacaoModule'
 
 export default createStore({
   modules: {
@@ -14,5 +15,6 @@ export default createStore({
     relatorio,
     setor,
     usuario,
+    solicitacao,
   },
 })

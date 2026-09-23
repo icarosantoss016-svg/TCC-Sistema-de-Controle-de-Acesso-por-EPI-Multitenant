@@ -20,9 +20,22 @@ const Usuario = sequelize.define('Usuario', {
         type:DataTypes.ENUM('ADMIN','ADM_EMPRESA','USUARIO'),
         allowNull:false
     },
-    id_empresa:{
-        type:DataTypes.INTEGER,
-        allowNull:false
+    nome: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    cargo: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('ATIVO', 'INATIVO'),
+        defaultValue: 'ATIVO',
+        allowNull: false
+    },
+    id_empresa: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 })
 
