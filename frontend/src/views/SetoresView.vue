@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import {
   Search,
@@ -49,6 +49,9 @@ function alterarFiltroLog(status) {
 }
 
 // Carrega os dados de setores, regras de EPI, empresas e logs ao montar o componente
+// e inicia polling automático de 15s apenas nos logs de acesso
+let _pollingLogs = null
+
 onMounted(async () => {
   await Promise.all([
     store.dispatch('setor/listaSetores'),
@@ -56,6 +59,11 @@ onMounted(async () => {
     store.dispatch('empresa/listaEmpresas'),
     carregarLogsAcesso(),
   ])
+  _pollingLogs = setInterval(carregarLogsAcesso, 15000)
+})
+
+onUnmounted(() => {
+  clearInterval(_pollingLogs)
 })
 
 // Estados locais de busca e controle de modais

@@ -3,7 +3,7 @@
   Descrição: Tela administrativa exclusiva do perfil ADMIN para revisar, aprovar e negar solicitações de acesso.
 -->
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { Check, X, Clock, CheckCircle2, XCircle } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
@@ -14,11 +14,21 @@ import AprovarSolicitacaoModal from '@/components/solicitacoes/AprovarSolicitaca
 
 const store = useStore()
 
+// Polling automático de 30s para verificar novas solicitações pendentes
+let _pollingSolicitacoes = null
+
 onMounted(async () => {
   await Promise.all([
     store.dispatch('solicitacao/listarSolicitacoes'),
     store.dispatch('empresa/listaEmpresas'),
   ])
+  _pollingSolicitacoes = setInterval(() => {
+    store.dispatch('solicitacao/listarSolicitacoes')
+  }, 30000)
+})
+
+onUnmounted(() => {
+  clearInterval(_pollingSolicitacoes)
 })
 
 const filtroStatus = ref('PENDENTE') // 'TODAS' | 'PENDENTE' | 'APROVADA' | 'NEGADA'

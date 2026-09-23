@@ -5,6 +5,7 @@ import LoginView from '@/views/LoginView.vue'
 import SetoresView from '@/views/SetoresView.vue'
 import UsuariosView from '@/views/UsuariosView.vue'
 import SolicitacoesAcessoView from '@/views/SolicitacoesAcessoView.vue'
+import DashboardView from '@/views/DashboardView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,8 +25,14 @@ const router = createRouter({
 
         if (!token || !usuario) return '/login'
         if (usuario.perfil === 'ADMIN') return '/empresas'
-        return '/setores'
+        return '/dashboard'
       },
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: DashboardView,
+      meta: { requerAuth: true, perfisPermitidos: ['ADMIN', 'ADM_EMPRESA', 'USUARIO'] },
     },
     {
       path: '/empresas',
@@ -67,7 +74,7 @@ router.beforeEach((to) => {
   if (to.meta.publico) {
     if (token && usuario) {
       // Se já está logado e tenta ir pro login, redireciona para a página pós-login
-      return usuario.perfil === 'ADMIN' ? '/empresas' : '/setores'
+      return usuario.perfil === 'ADMIN' ? '/empresas' : '/dashboard'
     }
     return true
   }
@@ -81,7 +88,7 @@ router.beforeEach((to) => {
   const perfisPermitidos = to.meta.perfisPermitidos
   if (perfisPermitidos && !perfisPermitidos.includes(usuario.perfil)) {
     // Redireciona para a tela permitida do perfil
-    return usuario.perfil === 'ADMIN' ? '/empresas' : '/setores'
+    return usuario.perfil === 'ADMIN' ? '/empresas' : '/dashboard'
   }
 
   return true

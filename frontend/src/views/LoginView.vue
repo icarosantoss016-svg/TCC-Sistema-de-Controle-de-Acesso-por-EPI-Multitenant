@@ -47,7 +47,7 @@ async function aoEnviar() {
     if (usuario?.perfil === 'ADMIN') {
       router.push('/empresas')
     } else {
-      router.push('/setores')
+      router.push('/dashboard')
     }
   } catch (err) {
     erroLogin.value = err.response?.data?.error || 'Usuário ou senha inválidos.'
