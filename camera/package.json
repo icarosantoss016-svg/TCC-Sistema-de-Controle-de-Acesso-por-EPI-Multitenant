@@ -1,0 +1,10 @@
+{
+  "name": "safezone-camera",
+  "version": "1.0.0",
+  "description": "Módulo de visão computacional e controle de acesso com YOLO",
+  "scripts": {
+    "postinstall": "pip install -r requirements.txt",
+    "provisionar": "python instaladorCamera.py",
+    "reconhecer": "python reconhecimento.py"
+  }
+}
