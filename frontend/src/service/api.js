@@ -18,15 +18,17 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      console.warn('Sessão expirarda ou não autorizada. Faça login novamente.')
-      localStorage.removeItem('token')
-      localStorage.removeItem('usuario')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
+    (response)=> response,
+    (error) => {
+        const rotaLogin = error.config?.url?.includes('/login')
+        
+        if(error.response&&error.response.status ===401&&!rotaLogin){
+        console.warn('Sessão expirarda ou não autorizada. Faça login novamente.')
+        localStorage.removeItem('token')
+        localStorage.removeItem('usuario')
+        window.location.href = '/login'            
+        }
+        return Promise.reject(error)
   },
 )
 

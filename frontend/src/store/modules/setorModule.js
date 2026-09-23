@@ -17,7 +17,7 @@ const getters = {
 
 const mutations = {
   SET_SETOR(state, setorDaApi) {
-    state.setor = setorDaApi
+    state.setor = Array.isArray(setorDaApi) ? setorDaApi : setorDaApi?.setor || []
   },
   SET_SETOR_SELECIONADO(state, setor) {
     state.setorSelecionado = setor
@@ -32,12 +32,14 @@ const mutations = {
     state.error = error
   },
   ADD_SETOR(state, setor) {
-    state.setor.push(setor)
+    const item = setor?.setor || setor
+    state.setor.push(item)
   },
   UPDATE_SETOR(state, setorAtt) {
-    const index = state.setor.findIndex((s) => s.id_setor === setorAtt.id_setor)
+    const item = setorAtt?.setor || setorAtt
+    const index = state.setor.findIndex((s) => s.id_setor === item.id_setor)
     if (index !== -1) {
-      state.setor.splice(index, 1, setorAtt)
+      state.setor.splice(index, 1, item)
     }
   },
   DELETE_SETOR(state, id_setor) {
@@ -59,6 +61,10 @@ const actions = {
     } finally {
       commit('SET_CARREGANDO', false)
     }
+  },
+
+  async listarSetores({ dispatch }) {
+    return dispatch('listaSetores')
   },
 
   async criarSetor({ commit }, setor) {

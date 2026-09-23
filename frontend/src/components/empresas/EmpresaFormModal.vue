@@ -65,6 +65,7 @@ async function aoSalvar() {
         ramo: ramo.value,
       })
     }
+    await store.dispatch('empresa/listaEmpresas')
     emit('fechar')
   } catch {
     erro.value = 'Não foi possível salvar a empresa. Confira os dados e tente novamente.'

@@ -1,7 +1,7 @@
-<script setup>
-import EmpresaView from '@/views/EmpresaView.vue'
-</script>
+<script setup></script>
 
 <template>
-  <EmpresaView />
+  <div class="justify-between">
+    <router-view />
+  </div>
 </template>

@@ -17,7 +17,7 @@ const getters = {
 
 const mutations = {
   SET_USUARIO(state, usuarioDaApi) {
-    state.usuario = usuarioDaApi
+    state.usuario = Array.isArray(usuarioDaApi) ? usuarioDaApi : (usuarioDaApi?.usuarios || [])
   },
   SET_USUARIO_SELECIONADO(state, usuario) {
     state.usuarioSelecionado = usuario
@@ -32,12 +32,14 @@ const mutations = {
     state.error = error
   },
   ADD_USUARIO(state, usuario) {
-    state.usuario.push(usuario)
+    const item = usuario?.usuario || usuario
+    state.usuario.unshift(item)
   },
   UPDATE_USUARIO(state, usuarioAtt) {
-    const index = state.usuario.findIndex((u) => u.id_usuario === usuarioAtt.id_usuario)
+    const item = usuarioAtt?.usuario || usuarioAtt
+    const index = state.usuario.findIndex((u) => u.id_usuario === item.id_usuario)
     if (index !== -1) {
-      state.usuario.splice(index, 1, usuarioAtt)
+      state.usuario.splice(index, 1, item)
     }
   },
   DELETE_USUARIO(state, id_usuario) {
@@ -66,16 +68,30 @@ const actions = {
     commit('SET_ERROR', null)
 
     try {
-      const resposta = await api.post('/api/criarusuario', {
-        login: usuario.login,
-        senha: usuario.senha,
-        id_empresa: usuario.id_empresa,
-        perfil: usuario.perfil,
-      })
+      const resposta = await api.post('/api/criarusuario', usuario)
       commit('ADD_USUARIO', resposta.data)
+      return resposta.data
     } catch (error) {
       console.error('Erro ao cadastrar usuario:', error)
-      commit('SET_ERROR', 'Não foi possível cadastrar usuario.')
+      commit('SET_ERROR', error.response?.data?.error || 'Não foi possível cadastrar usuario.')
+      throw error
+    } finally {
+      commit('SET_CARREGANDO', false)
+    }
+  },
+
+  async atualizarUsuario({ commit }, usuario) {
+    commit('SET_CARREGANDO', true)
+    commit('SET_ERROR', null)
+
+    try {
+      const resposta = await api.put(`/api/atualizarUsuario/${usuario.id_usuario}`, usuario)
+      commit('UPDATE_USUARIO', resposta.data)
+      return resposta.data
+    } catch (error) {
+      console.error('Erro ao atualizar usuario:', error)
+      commit('SET_ERROR', error.response?.data?.error || 'Não foi possível atualizar usuario.')
+      throw error
     } finally {
       commit('SET_CARREGANDO', false)
     }
@@ -93,6 +109,7 @@ const actions = {
     } catch (error) {
       console.error('Erro ao atualizar senha:', error)
       commit('SET_ERROR', 'Não foi possível atualizar senha.')
+      throw error
     } finally {
       commit('SET_CARREGANDO', false)
     }
@@ -108,6 +125,7 @@ const actions = {
     } catch (error) {
       console.error('Erro ao deletar usuario:', error)
       commit('SET_ERROR', 'Não foi possível deletar usuario.')
+      throw error
     } finally {
       commit('SET_CARREGANDO', false)
     }
@@ -121,7 +139,7 @@ const actions = {
       const resposta = await api.get(`/api/buscarUsuario/${usuario.id_usuario}`)
       commit('SET_USUARIO_SELECIONADO', resposta.data)
     } catch (error) {
-      console.error('Erro ao buscar usuarior:', error)
+      console.error('Erro ao buscar usuario:', error)
       commit('SET_ERROR', 'Não foi possível buscar usuario.')
     } finally {
       commit('SET_CARREGANDO', false)
