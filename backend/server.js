@@ -36,10 +36,15 @@ sequelize
     console.log('Banco de dados conectado e tabelas sincronizadas com sucesso.')
     await criarEmpresaAdmin()
     await criarAdminPadrao()
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`)
-    })
   })
   .catch((erro) => {
     console.error('Erro ao conectar com o banco de dados:', erro)
   })
+
+  if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`)
+  })
+}
+
+  module.exports = app
