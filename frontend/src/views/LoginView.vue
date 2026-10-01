@@ -60,7 +60,7 @@ async function aoEnviar() {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-bg-1 p-8">
     <div class="w-full max-w-md bg-bg-0 rounded-lg shadow-xl p-8">
-      <div class="flex items-center gap-3 mb-6">
+      <router-link to="/" class="inline-flex items-center gap-3 mb-6 group hover:opacity-90 transition-opacity">
         <div
           class="bg-accent w-11 h-11 rounded-md flex items-center justify-center text-white font-bold text-display"
         >
@@ -70,7 +70,7 @@ async function aoEnviar() {
           <span>SAFEZONE</span>
           <p class="text-caption text-text-2">Controle Setorial de EPI</p>
         </div>
-      </div>
+      </router-link>
 
       <h1 class="text-heading font-bold text-text-0 mb-1">Entrar na sua conta</h1>
       <p class="text-caption text-text-2 mb-6">

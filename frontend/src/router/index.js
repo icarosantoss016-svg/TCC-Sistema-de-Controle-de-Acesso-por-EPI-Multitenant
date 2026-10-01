@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '@/store'
+import LandingView from '@/views/LandingView.vue'
 import EmpresaView from '@/views/EmpresaView.vue'
 import LoginView from '@/views/LoginView.vue'
 import SetoresView from '@/views/SetoresView.vue'
@@ -11,22 +12,20 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/',
+      name: 'landing',
+      component: LandingView,
+      meta: { publico: true },
+    },
+    {
+      path: '/landing',
+      redirect: '/',
+    },
+    {
       path: '/login',
       name: 'login',
       component: LoginView,
       meta: { publico: true },
-    },
-    {
-      path: '/',
-      name: 'root',
-      redirect: () => {
-        const token = localStorage.getItem('token')
-        const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
-
-        if (!token || !usuario) return '/login'
-        if (usuario.perfil === 'ADMIN') return '/empresas'
-        return '/dashboard'
-      },
     },
     {
       path: '/dashboard',
@@ -70,9 +69,9 @@ router.beforeEach((to) => {
   const token = localStorage.getItem('token')
   const usuario = store.state.auth?.usuario || JSON.parse(localStorage.getItem('usuario') || 'null')
 
-  // Se rota pública (como login), permite acesso direto
+  // Se rota pública (como landing e login), permite acesso direto
   if (to.meta.publico) {
-    if (token && usuario) {
+    if (to.name === 'login' && token && usuario) {
       // Se já está logado e tenta ir pro login, redireciona para a página pós-login
       return usuario.perfil === 'ADMIN' ? '/empresas' : '/dashboard'
     }
