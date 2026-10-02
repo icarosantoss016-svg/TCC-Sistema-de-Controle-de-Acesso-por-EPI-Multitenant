@@ -16,7 +16,7 @@ const { criarEmpresaAdmin } = require('./controllers/empresaContoller')
 const { criarAdminPadrao } = require('./controllers/usuarioController')
 
 const app = express()
-const PORT = 3000
+const PORT = process.env.PORT || 3000
 
 app.use(cors())
 app.use(express.json())
@@ -36,10 +36,15 @@ sequelize
     console.log('Banco de dados conectado e tabelas sincronizadas com sucesso.')
     await criarEmpresaAdmin()
     await criarAdminPadrao()
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`)
-    })
   })
   .catch((erro) => {
     console.error('Erro ao conectar com o banco de dados:', erro)
   })
+
+  if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`)
+  })
+}
+
+  module.exports = app
