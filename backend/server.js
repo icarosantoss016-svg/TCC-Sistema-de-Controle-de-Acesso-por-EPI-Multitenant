@@ -8,7 +8,6 @@ const setorRoutes = require('./routers/setorRoutes')
 const usuarioRoutes = require('./routers/usuarioRoutes')
 const authRoutes = require('./routers/authRoutes')
 const relatoriosRoutes = require('./routers/relatorioRoutes')
-const viewsRoutes = require('./routers/viewsRoutes')
 const empresaRoutes = require('./routers/empresaRoutes')
 const regraEpiRoutes = require('./routers/regraEpiRoutes')
 const solicitacaoRoutes = require('./routers/solicitacaoRoutes')
@@ -17,6 +16,10 @@ const { criarAdminPadrao } = require('./controllers/usuarioController')
 
 const app = express()
 const PORT = process.env.PORT || 3000
+
+app.get('/', (req, res) => {
+  res.json({ status: 'API SafeZone rodando com sucesso!' })
+})
 
 app.use(cors())
 app.use(express.json())
