@@ -31,7 +31,6 @@ app.use(relatoriosRoutes)
 app.use(empresaRoutes)
 app.use(regraEpiRoutes)
 app.use(solicitacaoRoutes)
-app.use('/', viewsRoutes)
 
 sequelize
   .sync()
